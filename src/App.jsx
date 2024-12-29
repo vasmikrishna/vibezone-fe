@@ -29,7 +29,7 @@ export default function App() {
     // 1. Connect to signaling server
     // IMPORTANT: Use "ws://localhost:3001", not "http://"
     // wsRef.current = new WebSocket('http://localhost:3001/');
-    wsRef.current = new WebSocket('http://52.66.205.53:3001/');
+    wsRef.current = new WebSocket('https://vibezone-be.vercel.app/');
 
 
     wsRef.current.onopen = () => {
