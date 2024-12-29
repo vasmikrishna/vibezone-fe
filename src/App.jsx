@@ -28,8 +28,8 @@ export default function App() {
   useEffect(() => {
     // 1. Connect to signaling server
     // IMPORTANT: Use "ws://localhost:3001", not "http://"
-    wsRef.current = new WebSocket('http://localhost:3001/');
-    // wsRef.current = new WebSocket('http://3.110.148.74:3001/');
+    // wsRef.current = new WebSocket('http://localhost:3001/');
+    wsRef.current = new WebSocket('http://3.110.148.74:3001/');
 
 
     wsRef.current.onopen = () => {
