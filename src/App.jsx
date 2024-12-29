@@ -29,7 +29,7 @@ export default function App() {
     // 1. Connect to signaling server
     // IMPORTANT: Use "ws://localhost:3001", not "http://"
     // wsRef.current = new WebSocket('http://localhost:3001/');
-    wsRef.current = new WebSocket('http://3.110.148.74:3001/');
+    wsRef.current = new WebSocket('ws://52.66.205.53:3001/');
 
 
     wsRef.current.onopen = () => {
