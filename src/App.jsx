@@ -19,9 +19,11 @@ export default function App() {
   const [partnerId, setPartnerId] = useState(null);
   const [role, setRole] = useState(null); // 'caller' or 'callee'
   const [localStream, setLocalStream] = useState(null);
+  const [socketId, setSocketId] = useState(null);
 
   const localVideo = useRef(null);
   const remoteVideo = useRef(null);
+
 
   useEffect(() => {
     // 1. Connect to signaling server
@@ -29,17 +31,10 @@ export default function App() {
     wsRef.current = new WebSocket('http://localhost:3001/');
     // wsRef.current = new WebSocket('http://3.110.148.74:3001/');
 
-    const newRTCPeerConnection = new RTCPeerConnection(configuration, { iceCandidatePoolSize: 10 });
-    newRTCPeerConnection.onicecandidate = (event) => {
-      console.log('ICE candidate: -- >', event.candidate);
-    };
-    newRTCPeerConnection.onicegatheringstatechange = () => {
-      console.log('ICE gathering state:  -->', newRTCPeerConnection.iceGatheringState);
-    };
-
 
     wsRef.current.onopen = () => {
-      console.log('Connected to signaling server');
+      setSocketId(wsRef.current.socketId);
+      console.log('Connected to signaling server',wsRef.current );
     };
 
     wsRef.current.onmessage = async (event) => {
@@ -97,7 +92,7 @@ export default function App() {
       console.log('Disconnecting...');
       wsRef.current.close();
     };
-  }, []);
+  }, [localStream]);
 
   // 2. Get local media once on mount
   useEffect(() => {
@@ -113,10 +108,15 @@ export default function App() {
       }
     })();
   }, []);
+  
 
   /** Initialize a new RTCPeerConnection */
   function initPeerConnection(remoteId) {
     // const pc = new RTCPeerConnection(configuration);
+    if (!localStream) {
+      console.error('Local stream not initialized yet.');
+      return;
+    }
     const pc = new RTCPeerConnection(configuration, { iceCandidatePoolSize: 10 });
 
     pc.onicegatheringstatechange = () => {
@@ -242,9 +242,12 @@ export default function App() {
     <div style={{ padding: '1rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}> 
         <div> 
-          <h2>VibeZone</h2>
+          <h2>VibeZone</h2> 
           <p>
             This is the place where you can find your vibe. 
+          </p>
+          <p>
+            my socketId is: {socketId}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginRight: '4rem' }}>
