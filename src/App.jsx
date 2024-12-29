@@ -1,245 +1,16 @@
-// import React, { useEffect, useRef, useState } from 'react';
-
-// const configuration = {
-//   iceServers: [
-//     { urls: 'stun:stun.l.google.com:19302' },
-//     // Insert a TURN server here if needed
-//   ]
-// };
-
-// export default function App() {
-//   const wsRef = useRef(null);
-//   const pcRef = useRef(null);
-
-//   const [userId, setUserId] = useState(null);
-//   const [connected, setConnected] = useState(false);
-//   const [partnerId, setPartnerId] = useState(null);
-//   const [localStream, setLocalStream] = useState(null);
-
-//   const localVideo = useRef(null);
-//   const remoteVideo = useRef(null);
-
-//   useEffect(() => {
-//     // 1. Connect to signaling server
-//     wsRef.current = new WebSocket('http://localhost:3001');
-
-//     wsRef.current.onmessage = async (event) => {
-   
-//       const data = JSON.parse(event.data);
-//       switch (data.type) {
-//         case 'connected':
-//           setConnected(true);
-//           console.log('connected to signaling server:', data.msg);
-//           break;
-//         case 'matched':
-//           // We have a partner now
-//           console.log('Matched with:', data.partnerId);
-//           setPartnerId(data.partnerId);
-//           initPeerConnection(data.partnerId);
-//           break;
-
-//         case 'offer':
-//           // We are the callee
-//           console.log('Received offer from:', data.from);
-//           handleOffer(data.offer, data.from);
-//           break;
-
-//         case 'answer':
-//           // We are the caller
-//           console.log('Received answer from:', data.from);
-//           handleAnswer(data.answer);
-//           break;
-
-//         case 'candidate':
-//           console.log('Received candidate from:', data.from);
-//           handleCandidate(data.candidate);
-//           break;
-
-//         case 'hangup':
-//           endCall();
-//           break;
-//       }
-//     };
-
-//     wsRef.current.onClose = () => {
-//       console.log('Disconnected from signaling server');
-//     };
-
-//     return () => {
-//       console.log('Disconnecting from signaling server');
-//       wsRef.current.close();
-//     };
-//   }, []);
-
-//   // 2. Get local media
-//   useEffect(() => {
-//     (async () => {
-//       try {
-//         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-//         setLocalStream(stream);
-//         if (localVideo.current) {
-//           localVideo.current.srcObject = stream;
-//         }
-//       } catch (err) {
-//         console.error('Error accessing media devices:', err);
-//       }
-//     })();
-//   }, []);
-
-//   // Initialize a new RTCPeerConnection
-//   function initPeerConnection(remoteId) {
-//     const pc = new RTCPeerConnection(configuration);
-
-//     // Store in ref so we can use later
-//     pcRef.current = pc;
-
-//     // Add local tracks
-//     localStream?.getTracks().forEach((track) => {
-//       pc.addTrack(track, localStream);
-//     });
-
-//     // ontrack => set remote video
-//     pc.ontrack = (event) => {
-//       if (remoteVideo.current) {
-//         remoteVideo.current.srcObject = event.streams[0];
-//       }
-//     };
-
-//     // onicecandidate => send to partner
-//     pc.onicecandidate = (event) => {
-//       if (event.candidate) {
-//         wsRef.current.send(JSON.stringify({
-//           type: 'candidate',
-//           candidate: event.candidate,
-//           to: remoteId
-//         }));
-//       }
-//     };
-//   }
-
-//   // Caller: create offer
-//   async function createOffer() {
-//     const pc = pcRef.current;
-//     if (!pc) return;
-//     const offer = await pc.createOffer();
-//     await pc.setLocalDescription(offer);
-//     wsRef.current.send(JSON.stringify({
-//       type: 'offer',
-//       offer: pc.localDescription,
-//       to: partnerId
-//     }));
-//   }
-
-//   // Callee: handle incoming offer
-//   async function handleOffer(offer, fromId) {
-//     setPartnerId(fromId);
-//     initPeerConnection(fromId);
-
-//     const pc = pcRef.current;
-//     await pc.setRemoteDescription(offer);
-
-//     const answer = await pc.createAnswer();
-//     await pc.setLocalDescription(answer);
-
-//     wsRef.current.send(JSON.stringify({
-//       type: 'answer',
-//       answer: pc.localDescription,
-//       to: fromId
-//     }));
-//   }
-
-//   // Caller: handle incoming answer
-//   async function handleAnswer(answer) {
-//     const pc = pcRef.current;
-//     if (!pc) return;
-//     await pc.setRemoteDescription(answer);
-//   }
-
-//   // Both: handle ICE candidate
-//   async function handleCandidate(candidate) {
-//     const pc = pcRef.current;
-//     if (!pc) return;
-//     try {
-//       await pc.addIceCandidate(candidate);
-//     } catch (err) {
-//       console.error('Error adding candidate', err);
-//     }
-//   }
-
-//   // Hang up call
-//   function hangUp() {
-//     wsRef.current.send(JSON.stringify({ type: 'hangup' }));
-//     endCall();
-//   }
-
-//   // Skip => hangup + re-queue
-//   function skip() {
-//     wsRef.current.send(JSON.stringify({ type: 'skip' }));
-//     endCall();
-//   }
-
-//   function endCall() {
-//     if (pcRef.current) {
-//       pcRef.current.close();
-//       pcRef.current = null;
-//     }
-//     if (remoteVideo.current) {
-//       remoteVideo.current.srcObject = null;
-//     }
-//     setPartnerId(null);
-//   }
-
-//   function findMatch() {
-//     wsRef.current.send(JSON.stringify({ type: 'findMatch' }));
-//   }
-
-//   return (
-//     <div style={{ padding: '1rem' }}>
-//       <h2>Chatroulette Style Demo</h2>
-//       <div style={{ display: 'flex', gap: '0.5rem' }}>
-//         <video
-//           ref={localVideo}
-//           autoPlay
-//           muted
-//           style={{ width: '45%', background: '#000' }}
-//         />
-//         <video
-//           ref={remoteVideo}
-//           autoPlay
-//           style={{ width: '45%', background: '#000' }}
-//         />
-//       </div>
-//       <div style={{ marginTop: '1rem' }}>
-//         {partnerId && (
-//           <>
-//             <button onClick={createOffer}>Start Call (Offer)</button>
-//             <button onClick={hangUp}>Hang Up</button>
-//             <button onClick={skip}>Skip</button>
-//           </>
-//         )}
-//         {!partnerId && <p>Waiting for match...</p>}
-//       </div>
-//       <div> 
-//         {connected && (
-//           <button onClick={findMatch}>find match</button>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
 import React, { useEffect, useRef, useState } from 'react';
 
 const configuration = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    
-    // Insert a TURN server here if needed
+    { urls: 'stun:43.204.141.222:3478' },
+    {
+      urls: 'turn:43.204.141.222:3478',
+      username: 'vamsi',
+      credential: '9100684109',
+    },
   ],
 };
+
 
 export default function App() {
   const wsRef = useRef(null);
@@ -255,7 +26,17 @@ export default function App() {
   useEffect(() => {
     // 1. Connect to signaling server
     // IMPORTANT: Use "ws://localhost:3001", not "http://"
-    wsRef.current = new WebSocket('ws://localhost:3001');
+    wsRef.current = new WebSocket('http://localhost:3001/');
+    // wsRef.current = new WebSocket('http://3.110.148.74:3001/');
+
+    const newRTCPeerConnection = new RTCPeerConnection(configuration, { iceCandidatePoolSize: 10 });
+    newRTCPeerConnection.onicecandidate = (event) => {
+      console.log('ICE candidate: -- >', event.candidate);
+    };
+    newRTCPeerConnection.onicegatheringstatechange = () => {
+      console.log('ICE gathering state:  -->', newRTCPeerConnection.iceGatheringState);
+    };
+
 
     wsRef.current.onopen = () => {
       console.log('Connected to signaling server');
@@ -263,7 +44,7 @@ export default function App() {
 
     wsRef.current.onmessage = async (event) => {
       const data = JSON.parse(event.data);
-      console.log('WS message:', data);
+      console.log('WS message: =>', data);
 
       switch (data.type) {
         case 'matched':
@@ -335,7 +116,13 @@ export default function App() {
 
   /** Initialize a new RTCPeerConnection */
   function initPeerConnection(remoteId) {
-    const pc = new RTCPeerConnection(configuration);
+    // const pc = new RTCPeerConnection(configuration);
+    const pc = new RTCPeerConnection(configuration, { iceCandidatePoolSize: 10 });
+
+    pc.onicegatheringstatechange = () => {
+      console.log('ICE gathering state:', pc.iceGatheringState);
+    };
+
 
     console.log('Created RTCPeerConnection:');
 
@@ -358,7 +145,7 @@ export default function App() {
 
     // onicecandidate => send to partner
     pc.onicecandidate = (event) => {
-      console.log('ICE candidate: send to partner', event.candidate, remoteId);
+      console.log('ICE candidate:', event.candidate);
       if (event.candidate) {
         wsRef.current.send(JSON.stringify({
           type: 'candidate',
