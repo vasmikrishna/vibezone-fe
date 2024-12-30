@@ -1,4 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
+import VideocamIcon from '@mui/icons-material/Videocam';
+import VideocamOffIcon from '@mui/icons-material/VideocamOff';
+import CircularProgress from "@mui/material/CircularProgress";
+import './video.css';
+
+import logo from './assets/vibezone-logo.svg';
+import StatusWithNumber from './components/activeUsers';
 
 const configuration = {
   iceServers: [
@@ -20,10 +29,14 @@ export default function App() {
   const [role, setRole] = useState(null); // 'caller' or 'callee'
   const [localStream, setLocalStream] = useState(null);
   const [socketId, setSocketId] = useState(null);
+  const [micOn, setMicOn] = useState(true); // Track mic state
+  const [videoOn, setVideoOn] = useState(true); // Track video state
+
 
   const localVideo = useRef(null);
   const remoteVideo = useRef(null);
 
+  const [activeUsers, setActiveUsers] = useState(1);
 
   useEffect(() => {
     // 1. Connect to signaling server
@@ -42,6 +55,10 @@ export default function App() {
       console.log('WS message: =>', data);
 
       switch (data.type) {
+        case 'activeUsers':
+          console.log('Active users:', data.value);
+          setActiveUsers(data.value);
+          break;
         case 'matched':
           // We have a partner now
           setPartnerId(data.partnerId);
@@ -93,6 +110,25 @@ export default function App() {
       wsRef.current.close();
     };
   }, [localStream]);
+
+  const toggleMic = () => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach((track) => {
+        track.enabled = !micOn;
+      });
+      setMicOn(!micOn);
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localStream) {
+      localStream.getVideoTracks().forEach((track) => {
+        track.enabled = !videoOn;
+      });
+      setVideoOn(!videoOn);
+    }
+  };
+
 
   // 2. Get local media once on mount
   useEffect(() => {
@@ -239,36 +275,49 @@ export default function App() {
   }
 
   return (
-    <div style={{ padding: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}> 
+    <div style={{ padding: '4rem',  }}>
+      <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}> 
+        <StatusWithNumber number={activeUsers} />
+      </div>
+      <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'space-between', gap: '0.5rem' }}> 
         <div> 
-          <h2>VibeZone</h2> 
-          <p>
-            This is the place where you can find your vibe. 
-          </p>
-          <p>
-            my socketId is: {socketId}
-          </p>
+          <img src={logo} className="logo" alt="logo" />
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginRight: '4rem' }}>
-        <button onClick={skip} style={{ width: '100px', height: '50px', textAlign: 'center', borderRadius: '10px', background: '#000', color: '#fff'   }}>Skip</button>
+        <div style={{ display: 'flex', alignItems: 'center'}}>
+            <button onClick={skip} style={{ width: '70px',padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: '#8F47FF', color: '#fff', }}>
+              Skip
+            </button>
         </div>
       </div>
       
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'space-between' }}>
-        <video
-          ref={localVideo}
-          autoPlay
-          muted
-          style={{ width: '45%', background: '#000' }}
-        />
-        <video
-          ref={remoteVideo}
-          autoPlay
-          style={{ width: '45%', background: '#000' }}
-        />
-       
+      <div className="video-container">
+        <div className="video-wrapper">
+          <video ref={localVideo} autoPlay muted className="video" />
+        </div>
+        <div className="video-wrapper">
+          {partnerId ? (
+            <video ref={remoteVideo} autoPlay className="video" />
+          ) : (
+            <div className="loader"><CircularProgress color='#8F47FF' /></div>
+          )}
+        </div>
       </div>
+
+
+      <div className="container">
+        <div className="button-container">
+          <button onClick={toggleMic} className="icon-button">
+            {micOn ? <MicIcon className="icon" /> : <MicOffIcon className="icon" />}
+          </button>
+          <button onClick={toggleVideo} className="icon-button">
+            {videoOn ? <VideocamIcon className="icon" /> : <VideocamOffIcon className="icon" />}
+          </button>
+        </div>
+        <div className="dummy-div">
+          {/* Dummy content */}
+        </div>
+      </div>
+
       <div style={{ marginTop: '1rem' }}>
           {partnerId ? (
             <>
@@ -276,11 +325,9 @@ export default function App() {
               
             </>
           ) : (
-            <p>Waiting for a partner to match...</p>
+            <p>Waiting for a partner to match ...</p>
           )}
-        </div>
-
-     
+        </div>     
     </div>
   );
 }

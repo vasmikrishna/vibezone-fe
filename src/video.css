@@ -1,0 +1,92 @@
+.video-container {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .video-wrapper {
+    width: 48%; /* Ensure equal width for both video sections */
+    background: #000; /* Black background for better contrast */
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    aspect-ratio: 16 / 9; /* Maintain consistent video aspect ratio */
+  }
+  
+  .video {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .loader {
+    color: #fff;
+    
+    font-size: 1.2rem;
+    text-align: center;
+  }
+  
+  
+  @media (max-width: 768px) {
+    .video-container {
+      flex-direction: column; /* Stack videos vertically on small screens */
+      gap: 1rem; /* Add more space between stacked videos */
+    }
+  
+    .video {
+      width: 100%; /* Videos take full width on mobile */
+    }
+  }
+  
+
+/* Main container styling */
+.container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1rem;
+    margin-right: 4rem;
+  }
+  
+  /* Button container styling */
+  .button-container {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+  
+  /* Dummy div styling */
+  .dummy-div {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    width: 100%;
+  }
+  
+  /* Button styling */
+  .icon-button {
+    outline: none;
+    border: none;
+    cursor: pointer; /* Change cursor to pointer for better UX */
+  }
+  
+  /* Icon styling */
+  .icon {
+    color: #8F47FF;
+    border: 0px;
+  }
+  
+  @media screen and (max-width: 768px) {
+    .container {
+      flex-direction: column;
+      gap: 1rem;
+      margin-left: 3rem;
+    }
+    
+  }
+
+  
