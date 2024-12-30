@@ -275,7 +275,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ padding: '4rem',  }}>
+    <div  style={{ padding: '2rem'}} >
       <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}> 
         <StatusWithNumber number={activeUsers} />
       </div>
