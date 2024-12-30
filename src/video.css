@@ -8,6 +8,7 @@
   
   .video-wrapper {
     width: 48%; /* Ensure equal width for both video sections */
+    aspect-ratio: 16 / 9;
     background: #000; /* Black background for better contrast */
     position: relative;
     display: flex;

@@ -41,8 +41,8 @@ export default function App() {
   useEffect(() => {
     // 1. Connect to signaling server
     // IMPORTANT: Use "ws://localhost:3001", not "http://"
-    // wsRef.current = new WebSocket('http://localhost:3001/');
-    wsRef.current = new WebSocket('https://vibezone.in/');
+    wsRef.current = new WebSocket('http://localhost:3001/');
+    // wsRef.current = new WebSocket('https://vibezone.in/');
 
 
     wsRef.current.onopen = () => {
