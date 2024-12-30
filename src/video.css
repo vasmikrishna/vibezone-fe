@@ -1,3 +1,4 @@
+
 .video-container {
     display: flex;
     gap: 0.5rem;
@@ -86,6 +87,11 @@
       gap: 1rem;
       margin-left: 3rem;
     }
+
+    .video-wrapper {
+      width: 100%;
+    }
+
     
   }
 
