@@ -12,6 +12,7 @@ import './video.css';
 
 import logo from './assets/vibezone-logo.svg';
 import StatusWithNumber from './components/activeUsers';
+import InstagramCTA from './page/insta';
 
 const configuration = {
   iceServers: [
@@ -357,6 +358,10 @@ export default function VideoPage() {
 
   return (
     <div  style={{ padding: '2rem'}} >
+      <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}>
+        <InstagramCTA />
+      </div>
+ 
       <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}> 
         <StatusWithNumber number={activeUsers} />
       </div>
@@ -373,11 +378,11 @@ export default function VideoPage() {
       
       <div className="video-container">
         <div className="video-wrapper">
-          <video ref={localVideo} autoPlay muted className="video" />
+          <video ref={localVideo} autoPlay playsInline  muted className="video" />
         </div>
         <div className="video-wrapper">
           {partnerId ? (
-            <video ref={remoteVideo} autoPlay className="video" />
+            <video ref={remoteVideo} autoPlay playsInline  className="video" />
           ) : (
             <div className="loader"><CircularProgress color='#8F47FF' /></div>
           )}
