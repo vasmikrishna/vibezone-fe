@@ -28,7 +28,7 @@ export default function App() {
   const [partnerId, setPartnerId] = useState(null);
   const [role, setRole] = useState(null); // 'caller' or 'callee'
   const [localStream, setLocalStream] = useState(null);
-  const [socketId, setSocketId] = useState(null);
+  const [socketId, setSocketId] = useState('');
   const [micOn, setMicOn] = useState(true); // Track mic state
   const [videoOn, setVideoOn] = useState(true); // Track video state
 
@@ -46,7 +46,6 @@ export default function App() {
 
 
     wsRef.current.onopen = () => {
-      setSocketId(wsRef.current.socketId);
       console.log('Connected to signaling server',wsRef.current );
     };
 
@@ -55,6 +54,10 @@ export default function App() {
       console.log('WS message: =>', data);
 
       switch (data.type) {
+        case 'connected':
+          console.log('Socket ID:', data.id);
+          setSocketId(data.id);
+          break;
         case 'activeUsers':
           console.log('Active users:', data.value);
           setActiveUsers(data.value);
@@ -321,11 +324,11 @@ export default function App() {
       <div style={{ marginTop: '1rem' }}>
           {partnerId ? (
             <>
-              <p>Currently connected with partner: {partnerId} ({role})</p>
+              <p>you {socketId} Currently connected with partner: {partnerId} ({role})</p>
               
             </>
           ) : (
-            <p>Waiting for a partner to match ...</p>
+            <p>you {socketId} Waiting for a partner to match ...</p>
           )}
         </div>     
     </div>
