@@ -4,6 +4,10 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
 import CircularProgress from "@mui/material/CircularProgress";
+import { analytics } from "./firebase";
+import { logEvent } from "firebase/analytics";
+import { messaging } from "./firebase";
+import { getToken, onMessage } from "firebase/messaging";
 import './video.css';
 
 import logo from './assets/vibezone-logo.svg';
@@ -28,7 +32,7 @@ export default function App() {
   const [partnerId, setPartnerId] = useState(null);
   const [role, setRole] = useState(null); // 'caller' or 'callee'
   const [localStream, setLocalStream] = useState(null);
-  const [socketId, setSocketId] = useState(null);
+  const [socketId, setSocketId] = useState('');
   const [micOn, setMicOn] = useState(true); // Track mic state
   const [videoOn, setVideoOn] = useState(true); // Track video state
 
@@ -39,6 +43,75 @@ export default function App() {
   const [activeUsers, setActiveUsers] = useState(1);
 
   useEffect(() => {
+    const requestPermission = async () => {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+          console.log("Notification permission granted.");
+          const token = await getToken(messaging, {
+            vapidKey: "BLBpommLIjIUxyevEwGpcw2AsngGQluz10W6CNDBlZyeEMM7K5JSrxoNlJv1YqJLiM9ElxOyNth62wIlyIuTr30", // Replace with your VAPID key
+          });
+          if (token) {
+            console.log("FCM Token:", token);
+            // Send this token to your backend to send push notifications
+          } else {
+            console.log("No FCM token received.");
+          }
+        } else {
+          console.log("Notification permission denied.");
+        }
+      } catch (error) {
+        console.error("Error requesting notification permission:", error);
+      }
+    };
+
+    requestPermission();
+  }, []);
+
+  // useEffect(() => {
+  //   const requestNotificationPermission = async () => {
+  //     try {
+  //       const permission = await Notification.requestPermission();
+  //       if (permission === "granted") {
+  //         console.log("Notification permission granted.");
+  //         // Get FCM Token
+  //         const token = await getToken(messaging, {
+  //           vapidKey: "YOUR_PUBLIC_VAPID_KEY", // Replace with your actual VAPID key
+  //         });
+  //         if (token) {
+  //           console.log("FCM Token:", token);
+  //           // You can send this token to your backend server for future use
+  //         } else {
+  //           console.log("No registration token available. Request permission to generate one.");
+  //         }
+  //       } else {
+  //         console.log("Notification permission denied.");
+  //       }
+  //     } catch (error) {
+  //       console.error("An error occurred while requesting notification permission:", error);
+  //     }
+  //   };
+  
+  //   requestNotificationPermission();
+  // }, []);
+  
+
+  useEffect(() => {
+    // Handle incoming messages while the app is in the foreground
+    onMessage(messaging, (payload) => {
+      console.log("Message received in foreground: ", payload);
+      // Optionally show a notification
+      new Notification(payload.notification.title, {
+        body: payload.notification.body,
+        icon: payload.notification.icon,
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+
+    logEvent(analytics, "app_opened");
+    
     // 1. Connect to signaling server
     // IMPORTANT: Use "ws://localhost:3001", not "http://"
     wsRef.current = new WebSocket('http://localhost:3001/');
@@ -46,7 +119,6 @@ export default function App() {
 
 
     wsRef.current.onopen = () => {
-      setSocketId(wsRef.current.socketId);
       console.log('Connected to signaling server',wsRef.current );
     };
 
@@ -55,6 +127,10 @@ export default function App() {
       console.log('WS message: =>', data);
 
       switch (data.type) {
+        case 'connected':
+          console.log('Socket ID:', data.id);
+          setSocketId(data.id);
+          break;
         case 'activeUsers':
           console.log('Active users:', data.value);
           setActiveUsers(data.value);
@@ -270,6 +346,11 @@ export default function App() {
 
   /** User presses "Skip" => send skip, server re-queues us */
   function skip() {
+    if (window.dataLayer) {
+      window.dataLayer.push({
+        event: 'skip', // The event name that matches your GTM trigger
+      });
+    }
     wsRef.current.send(JSON.stringify({ type: 'skip' }));
     endCall();
   }
@@ -317,17 +398,17 @@ export default function App() {
           {/* Dummy content */}
         </div>
       </div>
-
+{/* 
       <div style={{ marginTop: '1rem' }}>
           {partnerId ? (
             <>
-              <p>Currently connected with partner: {partnerId} ({role})</p>
+              <p>you {socketId} Currently connected with partner: {partnerId} ({role})</p>
               
             </>
           ) : (
-            <p>Waiting for a partner to match ...</p>
+            <p>you {socketId} Waiting for a partner to match ...</p>
           )}
-        </div>     
+        </div>      */}
     </div>
   );
 }
