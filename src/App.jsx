@@ -273,6 +273,11 @@ export default function App() {
 
   /** User presses "Skip" => send skip, server re-queues us */
   function skip() {
+    if (window.dataLayer) {
+      window.dataLayer.push({
+        event: 'skip', // The event name that matches your GTM trigger
+      });
+    }
     wsRef.current.send(JSON.stringify({ type: 'skip' }));
     endCall();
   }
