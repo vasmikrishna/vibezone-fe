@@ -320,7 +320,7 @@ export default function App() {
           {/* Dummy content */}
         </div>
       </div>
-
+{/* 
       <div style={{ marginTop: '1rem' }}>
           {partnerId ? (
             <>
@@ -330,7 +330,7 @@ export default function App() {
           ) : (
             <p>you {socketId} Waiting for a partner to match ...</p>
           )}
-        </div>     
+        </div>      */}
     </div>
   );
 }
