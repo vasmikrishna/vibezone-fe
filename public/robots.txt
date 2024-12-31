@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vibezone.org/sitemap.xml
