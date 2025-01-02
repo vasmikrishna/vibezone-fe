@@ -8,6 +8,7 @@ import { analytics } from "./firebase";
 import { logEvent } from "firebase/analytics";
 import { messaging } from "./firebase";
 import { getToken, onMessage } from "firebase/messaging";
+import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
 import './video.css';
 
 import logo from './assets/vibezone-logo.svg';
@@ -41,6 +42,10 @@ export default function VideoPage() {
   const localVideo = useRef(null);
   const remoteVideo = useRef(null);
 
+  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
+const [availableCameras, setAvailableCameras] = useState([]);
+
+
   const [activeUsers, setActiveUsers] = useState(1);
 
   useEffect(() => {
@@ -68,6 +73,61 @@ export default function VideoPage() {
 
     requestPermission();
   }, []);
+
+  const getStream = async (deviceId) => {
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId } },
+        audio: true,
+      });
+    } catch (err) {
+      console.error('Error accessing media devices:', err);
+    }
+  };
+
+  const switchCamera = async () => {
+    if (availableCameras.length > 1) {
+      const nextCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+      const nextCamera = availableCameras[nextCameraIndex];
+  
+      localStream?.getTracks().forEach(track => track.stop());
+  
+      const stream = await getStream(nextCamera.deviceId);
+      setLocalStream(stream);
+      setCurrentCameraIndex(nextCameraIndex);
+  
+      if (localVideo.current) {
+        localVideo.current.srcObject = stream;
+      }
+    } else {
+      console.warn('No additional cameras available to switch.');
+    }
+  };
+  
+  
+
+  useEffect(() => {
+    const getCameras = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        setAvailableCameras(videoDevices);
+  
+        if (videoDevices.length > 0) {
+          const stream = await getStream(videoDevices[0].deviceId);
+          setLocalStream(stream);
+          if (localVideo.current) {
+            localVideo.current.srcObject = stream;
+          }
+        }
+      } catch (err) {
+        console.error('Error accessing cameras:', err);
+      }
+    };
+  
+    getCameras();
+  }, []);
+  
 
   // useEffect(() => {
   //   const requestNotificationPermission = async () => {
@@ -379,6 +439,33 @@ export default function VideoPage() {
       <div className="video-container">
         <div className="video-wrapper">
           <video ref={localVideo} autoPlay playsInline  muted className="video" />
+          {availableCameras.length > 1 && (
+              <button
+              onClick={switchCamera}
+              style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                // background: '#6C63FF',
+                border: 'none',
+                borderRadius: '50%',
+                padding: '3px', /* Reduced padding for smaller size */
+                color: 'white',
+                cursor: 'pointer',
+                boxShadow: '0 4px 4px rgba(0, 0, 0, 0.2)',
+              }}
+            >
+              <CameraswitchIcon style={{ fontSize: '14px', 
+                backgroundColor: '#6C63FF', 
+                padding: '5px', 
+                borderRadius: '50%',
+                position: 'absolute',
+                top: '-3px',
+                right: '-3px',
+                }} /> {/* Reduced icon size */}
+            </button>
+          )}
+
         </div>
         <div className="video-wrapper">
           {partnerId ? (
@@ -388,7 +475,6 @@ export default function VideoPage() {
           )}
         </div>
       </div>
-
 
       <div className="container">
         <div className="button-container">
