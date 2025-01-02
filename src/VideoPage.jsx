@@ -102,7 +102,8 @@ export default function VideoPage() {
           audio: true, // Keep the audio stream
         });
 
-        console.log('New stream:', newStream);
+        setCurrentCameraIndex(nextCameraIndex);
+        console.log(`Switched to camera: ${nextCamera.label}`);
 
         if(!newStream?.active){
           console.log('No video tracks found');
@@ -133,6 +134,7 @@ export default function VideoPage() {
         setCurrentCameraIndex(nextCameraIndex);
         console.log(`Switched to camera: ${nextCamera.label}`);
       } catch (err) {
+        setCurrentCameraIndex((currentCameraIndex+1) % availableCameras.length);
         console.error("Error switching camera:", err);
       }
     } else {
@@ -465,17 +467,18 @@ export default function VideoPage() {
                 borderRadius: '50%',
                 padding: '3px', /* Reduced padding for smaller size */
                 color: 'white',
-                cursor: 'pointer',
+                // cursor: 'pointer',
                 boxShadow: '0 4px 4px rgba(0, 0, 0, 0.2)',
               }}
             >
               <CameraswitchIcon onClick={switchCamera} style={{ fontSize: '14px', 
                 backgroundColor: '#6C63FF', 
-                padding: '5px', 
+                padding: '7px', 
                 borderRadius: '50%',
                 position: 'absolute',
-                top: '-3px',
-                right: '-3px',
+                top: '-5px',
+                right: '-5px',
+                cursor: 'pointer',
                 }} /> {/* Reduced icon size */}
             </button>
           )}
