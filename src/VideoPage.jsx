@@ -4,9 +4,9 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
 import CircularProgress from "@mui/material/CircularProgress";
-import { analytics } from "./firebase";
+import { analytics } from "./firebase/firebase";
 import { logEvent } from "firebase/analytics";
-import { messaging } from "./firebase";
+import { messaging } from "./firebase/firebase";
 import { getToken, onMessage } from "firebase/messaging";
 import './video.css';
 
