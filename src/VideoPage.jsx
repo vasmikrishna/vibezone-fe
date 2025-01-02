@@ -96,11 +96,15 @@ export default function VideoPage() {
       try {
      
   
-        // Get a new stream from the selected camera
+        // Use facingMode for mobile devices
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         const newStream = await navigator.mediaDevices.getUserMedia({
-          video: { deviceId: { exact: nextCamera.deviceId } },
-          audio: true, // Keep the audio stream
+          video: isMobile
+            ? { facingMode: nextCameraIndex === 0 ? 'user' : 'environment' }
+            : { deviceId: { exact: nextCamera.deviceId } },
+          audio: true,
         });
+
 
         setCurrentCameraIndex(nextCameraIndex);
         console.log(`Switched to camera: ${nextCamera.label}`);
