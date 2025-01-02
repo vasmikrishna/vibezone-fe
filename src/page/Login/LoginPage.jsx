@@ -72,22 +72,22 @@ export default function LoginPage() {
     try {
       setError('');
       if (!email || !password) throw new Error('Email and password are required');
-
+  
       const result = await signInWithEmailAndPassword(auth, email, password);
       console.log('Email/Password Login Successful:', result.user);
-      login(result.user);
+  
+      // Save session in cookie
+      setCookie('authToken', result.user.accessToken, 365); // 365 days for 1 year
+      setCookie('userEmail', result.user.email, 365);
+  
+      login(result.user); // Context for app-wide use
       navigate('/dashboard');
     } catch (error) {
       console.error('Email/Password Login Error:', error.message);
-      if (error.code === 'auth/wrong-password') {
-        setError('Incorrect password. Please try again.');
-      } else if (error.code === 'auth/user-not-found') {
-        setError('No user found with this email. Please check and try again.');
-      } else {
-        setError('Failed to login. Please try again.');
-      }
+      setError('Failed to login. Please try again.');
     }
   };
+  
 
   const handlePasswordReset = async () => {
     try {
