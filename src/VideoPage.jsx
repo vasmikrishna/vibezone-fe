@@ -43,7 +43,8 @@ export default function VideoPage() {
   const remoteVideo = useRef(null);
 
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
-const [availableCameras, setAvailableCameras] = useState([]);
+  const [availableCameras, setAvailableCameras] = useState([]);
+  const [isStreaming, setIsStreaming] = useState(false);
 
 
   const [activeUsers, setActiveUsers] = useState(1);
@@ -88,21 +89,59 @@ const [availableCameras, setAvailableCameras] = useState([]);
   const switchCamera = async () => {
     if (availableCameras.length > 1) {
       const nextCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+      console.log('Next camera index:', nextCameraIndex);
+      console.log('Available cameras:', availableCameras);
       const nextCamera = availableCameras[nextCameraIndex];
   
-      localStream?.getTracks().forEach(track => track.stop());
+      try {
+     
   
-      const stream = await getStream(nextCamera.deviceId);
-      setLocalStream(stream);
-      setCurrentCameraIndex(nextCameraIndex);
+        // Get a new stream from the selected camera
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: nextCamera.deviceId } },
+          audio: true, // Keep the audio stream
+        });
+
+        console.log('New stream:', newStream);
+
+        if(!newStream?.active){
+          console.log('No video tracks found');
+          return;
+        }
+
+        // Stop the old tracks to release resources
+        localStream?.getTracks().forEach((track) => track.stop());
   
-      if (localVideo.current) {
-        localVideo.current.srcObject = stream;
+        // Replace the video track in the WebRTC PeerConnection
+        const videoTrack = newStream.getVideoTracks()[0];
+        const sender = pcRef.current
+          ?.getSenders()
+          ?.find((sender) => sender.track.kind === "video");
+  
+        if (sender) {
+          await sender.replaceTrack(videoTrack); // Replace track without renegotiation
+        } else {
+          console.warn("No sender found for video track.");
+        }
+  
+        // Update the local video element and state
+        setLocalStream(newStream);
+        if (localVideo.current) {
+          localVideo.current.srcObject = newStream;
+        }
+  
+        setCurrentCameraIndex(nextCameraIndex);
+        console.log(`Switched to camera: ${nextCamera.label}`);
+      } catch (err) {
+        console.error("Error switching camera:", err);
       }
     } else {
-      console.warn('No additional cameras available to switch.');
+      console.warn("No additional cameras available to switch.");
     }
   };
+  
+  
+
   
   
 
@@ -127,35 +166,7 @@ const [availableCameras, setAvailableCameras] = useState([]);
   
     getCameras();
   }, []);
-  
-
-  // useEffect(() => {
-  //   const requestNotificationPermission = async () => {
-  //     try {
-  //       const permission = await Notification.requestPermission();
-  //       if (permission === "granted") {
-  //         console.log("Notification permission granted.");
-  //         // Get FCM Token
-  //         const token = await getToken(messaging, {
-  //           vapidKey: "YOUR_PUBLIC_VAPID_KEY", // Replace with your actual VAPID key
-  //         });
-  //         if (token) {
-  //           console.log("FCM Token:", token);
-  //           // You can send this token to your backend server for future use
-  //         } else {
-  //           console.log("No registration token available. Request permission to generate one.");
-  //         }
-  //       } else {
-  //         console.log("Notification permission denied.");
-  //       }
-  //     } catch (error) {
-  //       console.error("An error occurred while requesting notification permission:", error);
-  //     }
-  //   };
-  
-  //   requestNotificationPermission();
-  // }, []);
-  
+   
 
   useEffect(() => {
     // Handle incoming messages while the app is in the foreground
@@ -168,6 +179,8 @@ const [availableCameras, setAvailableCameras] = useState([]);
       });
     });
   }, []);
+
+
 
   useEffect(() => {
 
@@ -246,7 +259,7 @@ const [availableCameras, setAvailableCameras] = useState([]);
       console.log('Disconnecting...');
       wsRef.current.close();
     };
-  }, [localStream]);
+  }, [isStreaming]);
 
   const toggleMic = () => {
     if (localStream) {
@@ -273,6 +286,7 @@ const [availableCameras, setAvailableCameras] = useState([]);
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         setLocalStream(stream);
+        setIsStreaming(true);
         if (localVideo.current) {
           localVideo.current.srcObject = stream;
         }
@@ -441,7 +455,7 @@ const [availableCameras, setAvailableCameras] = useState([]);
           <video ref={localVideo} autoPlay playsInline  muted className="video" />
           {availableCameras.length > 1 && (
               <button
-              onClick={switchCamera}
+              
               style={{
                 position: 'absolute',
                 top: '15px',
@@ -455,7 +469,7 @@ const [availableCameras, setAvailableCameras] = useState([]);
                 boxShadow: '0 4px 4px rgba(0, 0, 0, 0.2)',
               }}
             >
-              <CameraswitchIcon style={{ fontSize: '14px', 
+              <CameraswitchIcon onClick={switchCamera} style={{ fontSize: '14px', 
                 backgroundColor: '#6C63FF', 
                 padding: '5px', 
                 borderRadius: '50%',
