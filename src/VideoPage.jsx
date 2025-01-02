@@ -101,7 +101,7 @@ export default function VideoPage() {
         video: isIOS
           ? { facingMode: deviceId ? { exact: 'environment' } : 'user' } // iOS prefers facingMode
           : { deviceId: { exact: selectedDeviceId } }, // Default for other platforms
-        audio: true,
+        audio: micOn,
       };
   
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -488,7 +488,7 @@ export default function VideoPage() {
             </button>
         </div>
       </div>
-      <p>{JSON.stringify(availableCameras)} cams {currentCameraIndex}</p>
+      {/* <p>{JSON.stringify(availableCameras)} cams {currentCameraIndex}</p> */}
       
       <div className="video-container">
         <div className="video-wrapper">
