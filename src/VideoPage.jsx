@@ -75,16 +75,54 @@ export default function VideoPage() {
     requestPermission();
   }, []);
 
-  const getStream = async (deviceId) => {
+  const getStream = async (deviceId = null) => {
     try {
-      return await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: deviceId } },
+      // Detect device type
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+      const isAndroid = /Android/i.test(userAgent);
+  
+      console.log(`Device detected: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop/Other'}`);
+  
+      // Fetch available video input devices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+  
+      if (videoDevices.length === 0) {
+        console.error('No video input devices found.');
+        return null;
+      }
+  
+      // If no deviceId is provided, use the first available camera
+      const selectedDeviceId = deviceId || videoDevices[0].deviceId;
+  
+      // Cross-platform constraints
+      const constraints = {
+        video: isIOS
+          ? { facingMode: deviceId ? { exact: 'environment' } : 'user' } // iOS prefers facingMode
+          : { deviceId: { exact: selectedDeviceId } }, // Default for other platforms
         audio: true,
-      });
+      };
+  
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log(`Using camera: ${selectedDeviceId}`);
+      return stream;
     } catch (err) {
-      console.error('Error accessing media devices:', err);
+      // Handle errors
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        console.error('No camera or microphone found.');
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        console.error('Permission denied for accessing media devices.');
+      } else if (err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError') {
+        console.error('Constraints cannot be satisfied by available devices.');
+      } else {
+        console.error('Error accessing media devices:', err);
+      }
+      return null;
     }
   };
+  
+  
 
   const switchCamera = async () => {
     if (availableCameras.length > 1) {
@@ -97,13 +135,7 @@ export default function VideoPage() {
      
   
         // Use facingMode for mobile devices
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        const newStream = await navigator.mediaDevices.getUserMedia({
-          video: isMobile
-            ? { facingMode: nextCameraIndex === 0 ? 'user' : 'environment' }
-            : { deviceId: { exact: nextCamera.deviceId } },
-          audio: true,
-        });
+        const newStream = await getStream(nextCamera.deviceId);
 
 
         setCurrentCameraIndex(nextCameraIndex);
@@ -441,6 +473,7 @@ export default function VideoPage() {
       <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}>
         <InstagramCTA />
       </div>
+      
  
       <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}> 
         <StatusWithNumber number={activeUsers} />
@@ -455,10 +488,12 @@ export default function VideoPage() {
             </button>
         </div>
       </div>
+      <p>{JSON.stringify(availableCameras)} cams {currentCameraIndex}</p>
       
       <div className="video-container">
         <div className="video-wrapper">
           <video ref={localVideo} autoPlay playsInline  muted className="video" />
+          
           {availableCameras.length > 1 && (
               <button
               
