@@ -20,7 +20,12 @@ const StatusWithNumber = ({ number }) => {
 
         }}
       ></div>
-      <span style={{ color: '#32CD32', fontWeight: 'bold' }}>{number}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <span style={{ color: '#007bff', fontWeight: 'bold', fontSize: '18px' }}>
+          {number}
+        </span>
+      </div>
+
     </div>
   );
 };
