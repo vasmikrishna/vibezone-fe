@@ -211,9 +211,31 @@ export default function VideoPage() {
     }
   };
   
+  const renegotiate = async () => {
+    const pc = pcRef.current;
+    if (!pc) return;
+  
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+  
+      // Send the new offer to the partner
+      wsRef.current.send(
+        JSON.stringify({
+          type: "offer",
+          offer: pc.localDescription,
+          to: partnerId,
+        })
+      );
+      console.log("Renegotiation offer sent.");
+    } catch (err) {
+      console.error("Error during renegotiation:", err);
+    }
+  };
+
 
   const switchCamera = async () => {
-    if (availableCameras.length > 1) {
+    if (availableCameras.length > 0) {
       const nextCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
       console.log('Next camera index:', nextCameraIndex);
       console.log('Available cameras:', availableCameras);
@@ -257,6 +279,7 @@ export default function VideoPage() {
   
         setCurrentCameraIndex(nextCameraIndex);
         console.log(`Switched to camera: ${nextCamera.label}`);
+        await renegotiate();
       } catch (err) {
         setCurrentCameraIndex((currentCameraIndex+1) % availableCameras.length);
         console.error("Error switching camera:", err);
@@ -565,19 +588,17 @@ export default function VideoPage() {
         <div className="video-wrapper">
           <video ref={localVideo} autoPlay playsInline  muted className="video" />
           
-          {availableCameras.length > 0 && (
+          {/* {availableCameras.length > 0 && (
               <button
               
               style={{
                 position: 'absolute',
                 top: '15px',
                 right: '15px',
-                // background: '#6C63FF',
                 border: 'none',
                 borderRadius: '50%',
-                padding: '3px', /* Reduced padding for smaller size */
+                padding: '3px', 
                 color: 'white',
-                // cursor: 'pointer',
                 boxShadow: '0 4px 4px rgba(0, 0, 0, 0.2)',
               }}
             >
@@ -589,9 +610,9 @@ export default function VideoPage() {
                 top: '-5px',
                 right: '-5px',
                 cursor: 'pointer',
-                }} /> {/* Reduced icon size */}
+                }} /> 
             </button>
-          )}
+          )} */}
 
         </div>
         <div className="video-wrapper">
