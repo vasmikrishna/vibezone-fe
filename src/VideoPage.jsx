@@ -188,7 +188,7 @@ export default function VideoPage() {
       // Cross-platform constraints
       const constraints = {
         video: isIOS
-          ? { facingMode: cameraMode ? 'environment': 'user' } // iOS prefers facingMode
+          ? { facingMode: { exact: cameraMode ? 'user' : 'environment' }} // iOS prefers facingMode
           : { deviceId: { exact: selectedDeviceId } }, // Default for other platforms
         audio: micOn,
       };
@@ -225,7 +225,7 @@ export default function VideoPage() {
         // Use facingMode for mobile devices
         const newStream = await getStream(nextCamera.deviceId);
 
-        cameraMode(!cameraMode);
+        setCameraMode(!cameraMode);
         setCurrentCameraIndex(nextCameraIndex);
         console.log(`Switched to camera: ${nextCamera.label}`);
 
