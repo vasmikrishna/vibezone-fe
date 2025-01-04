@@ -188,7 +188,7 @@ export default function VideoPage() {
       // Cross-platform constraints
       const constraints = {
         video: videoOn && isIOS
-          ? { facingMode: { exact: cameraMode ? 'user' : 'environment' }} // iOS prefers facingMode
+          ? { facingMode:'user' } // iOS prefers facingMode
           : { deviceId: { exact: selectedDeviceId } }, // Default for other platforms
         audio: micOn,
       };
