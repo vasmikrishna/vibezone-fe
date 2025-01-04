@@ -14,6 +14,8 @@ import './video.css';
 import logo from './assets/vibezone-logo.svg';
 import StatusWithNumber from './components/activeUsers';
 import InstagramCTA from './page/insta';
+import FreeAccessForm from './components/earlybardAcess';
+
 
 const configuration = {
   iceServers: [
@@ -31,13 +33,15 @@ export default function VideoPage() {
   const wsRef = useRef(null);
   const pcRef = useRef(null);
 
+  const [serverUrl, setServerUrl] = useState('https://vibezone.in/');
   const [partnerId, setPartnerId] = useState(null);
   const [role, setRole] = useState(null); // 'caller' or 'callee'
   const [localStream, setLocalStream] = useState(null);
   const [socketId, setSocketId] = useState('');
   const [micOn, setMicOn] = useState(true); // Track mic state
   const [videoOn, setVideoOn] = useState(true); // Track video state
-
+  const [keyword, setKeyword] = useState('');
+  const [isPaused, setisPaused] = useState(true);
 
   const localVideo = useRef(null);
   const remoteVideo = useRef(null);
@@ -45,6 +49,36 @@ export default function VideoPage() {
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const [availableCameras, setAvailableCameras] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
+
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false); // Track submission state
+
+  useEffect(() => {
+    const submittedStatus = localStorage.getItem('freeAccessSubmitted');
+    console.log('submittedStatus:', submittedStatus);
+    if (submittedStatus === 'true') {
+      setHasSubmitted(true);
+    }
+  }, []);
+
+  const handlePopupOpen = () => {
+    if (!hasSubmitted) {
+      setIsPopupOpen(true);
+    }
+  };
+
+  const handlePopupClose = () => {
+    setIsPopupOpen(false);
+  };
+
+  const handleFormSubmitFreeAccess = () => {
+    console.log('Form submitted!');
+    setHasSubmitted(true); // Mark as submitted
+    setIsPopupOpen(false); // Close the popup
+    localStorage.setItem('freeAccessSubmitted', 'true'); // Persist submission state
+  };
+
+
 
 
   const [activeUsers, setActiveUsers] = useState(1);
@@ -74,6 +108,60 @@ export default function VideoPage() {
 
     requestPermission();
   }, []);
+
+    // Function to initialize the WebSocket connection
+    const initializeWebSocket = () => {
+      wsRef.current = new WebSocket(serverUrl);
+      // wsRef.current = new WebSocket('http://localhost:3001/');
+  
+      wsRef.current.onopen = () => {
+        console.log('Connected to signaling server');
+      };
+  
+      wsRef.current.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        console.log('WS message: =>', data);
+  
+        switch (data.type) {
+          case 'connected':
+            setSocketId(data.id);
+            break;
+          case 'activeUsers':
+            setActiveUsers(data.value);
+            break;
+          case 'matched':
+            setPartnerId(data.partnerId);
+            setRole(data.role);
+            initPeerConnection(data.partnerId);
+            if (data.role === 'caller') {
+              createOffer(data.partnerId);
+            }
+            break;
+          case 'offer':
+            handleOffer(data.offer, data.from);
+            break;
+          case 'answer':
+            handleAnswer(data.answer);
+            break;
+          case 'candidate':
+            handleCandidate(data.candidate);
+            break;
+          case 'hangup':
+            endCall();
+            break;
+          default:
+            console.warn('Unknown message type:', data.type);
+        }
+      };
+  
+      wsRef.current.onerror = (err) => {
+        console.error('WebSocket error:', err);
+      };
+  
+      wsRef.current.onclose = () => {
+        console.log('Disconnected from signaling server');
+      };
+    };
 
   const getStream = async (deviceId = null) => {
     try {
@@ -121,7 +209,6 @@ export default function VideoPage() {
       return null;
     }
   };
-  
   
 
   const switchCamera = async () => {
@@ -178,10 +265,6 @@ export default function VideoPage() {
     }
   };
   
-  
-
-  
-  
 
   useEffect(() => {
     const getCameras = async () => {
@@ -217,87 +300,6 @@ export default function VideoPage() {
       });
     });
   }, []);
-
-
-
-  useEffect(() => {
-
-    logEvent(analytics, "app_opened");
-    
-    // 1. Connect to signaling server
-    // IMPORTANT: Use "ws://localhost:3001", not "http://"
-    // wsRef.current = new WebSocket('http://localhost:3001/');
-    wsRef.current = new WebSocket('https://vibezone.in/');
-
-
-    wsRef.current.onopen = () => {
-      console.log('Connected to signaling server',wsRef.current );
-    };
-
-    wsRef.current.onmessage = async (event) => {
-      const data = JSON.parse(event.data);
-      console.log('WS message: =>', data);
-
-      switch (data.type) {
-        case 'connected':
-          console.log('Socket ID:', data.id);
-          setSocketId(data.id);
-          break;
-        case 'activeUsers':
-          console.log('Active users:', data.value);
-          setActiveUsers(data.value);
-          break;
-        case 'matched':
-          // We have a partner now
-          setPartnerId(data.partnerId);
-          setRole(data.role);
-          console.log(`Matched with ${data.partnerId}, I am the ${data.role}`);
-          // Initialize PeerConnection
-          initPeerConnection(data.partnerId);
-          // If I'm caller, immediately create offer
-          if (data.role === 'caller') {
-            console.log('Creating offer...');
-            createOffer(data.partnerId);
-          }
-          break;
-
-        case 'offer':
-          // We are the callee, automatically handle the offer
-          console.log('Received offer from:', data.from);
-          handleOffer(data.offer, data.from);
-          break;
-
-        case 'answer':
-          // We are the caller
-          console.log('Received answer from:', data.from);
-          handleAnswer(data.answer);
-          break;
-
-        case 'candidate':
-          console.log('Received candidate from:', data.from);
-          handleCandidate(data.candidate);
-          break;
-
-        case 'hangup':
-          console.log('Received hangup from:', data.from);
-          endCall();
-          break;
-      }
-    };
-
-    wsRef.current.onerror = (err) => {
-      console.error('WebSocket error:', err);
-    };
-
-    wsRef.current.onclose = () => {
-      console.log('Disconnected from signaling server');
-    };
-
-    return () => {
-      console.log('Disconnecting...');
-      wsRef.current.close();
-    };
-  }, [isStreaming]);
 
   const toggleMic = () => {
     if (localStream) {
@@ -468,24 +470,92 @@ export default function VideoPage() {
     endCall();
   }
 
+  const handlePause = () => {
+    endCall();
+    wsRef.current?.close();
+    wsRef.current = null;
+    setisPaused(true);
+  };
+
+  const handleResume = async () => {
+    setisPaused(false);
+    initializeWebSocket();
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+    setAvailableCameras(videoDevices);
+
+    if (videoDevices.length > 0) {
+      const stream = await getStream(videoDevices[0].deviceId);
+      setLocalStream(stream);
+      if (localVideo.current) {
+        localVideo.current.srcObject = stream;
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!isPaused) {
+      initializeWebSocket();
+    }
+
+    return () => {
+      wsRef.current?.close();
+    };
+  }, [isPaused]);
+
+
+
+
   return (
     <div  style={{ padding: '2rem'}} >
-      <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}>
-        <InstagramCTA />
+     <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'end', gap: '0.5rem' }}>
+      {hasSubmitted && <InstagramCTA />}
       </div>
+      {/* Free Access Button */}
+      {
+        !hasSubmitted && (
+          <div className="free-access-btn-container">
+            <button className="free-access-btn" onClick={handlePopupOpen}>
+              Get Lifetime Free Access!
+            </button>
+          </div>
+        )
+      }
+
+      
+
+      {/* Popup Modal */}
+      {isPopupOpen && (
+        <div className="popup-modal">
+          <div className="popup-content">
+            <button className="close-btn" onClick={handlePopupClose}>
+              &times;
+            </button>
+            <FreeAccessForm handleFormSubmitFreeAccess={handleFormSubmitFreeAccess} />
+          </div>
+        </div>
+      )}
       
  
       <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}> 
         <StatusWithNumber number={activeUsers} />
       </div>
       <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'space-between', gap: '0.5rem' }}> 
-        <div> 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}> 
           <img src={logo} className="logo" alt="logo" />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center'}}>
-            <button onClick={skip} style={{ width: '70px',padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: '#8F47FF', color: '#fff', }}>
-              Skip
-            </button>
+        <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column', gap: '0.5rem'}}>
+            <button
+                onClick={isPaused ? handleResume : handlePause}
+                style={{ width: '70px', padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: isPaused ? '#28a745' : '#dc3545', color: '#fff' }}
+              >
+            {isPaused ? 'Start' : 'Stop'}
+          </button>
+            {!isPaused && (
+                <button onClick={skip} style={{ width: '70px',padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: '#8F47FF', color: '#fff', }}>
+                Skip
+              </button>
+            )}
         </div>
       </div>
       {/* <p>{JSON.stringify(availableCameras)} cams {currentCameraIndex}</p> */}
