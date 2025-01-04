@@ -565,7 +565,7 @@ export default function VideoPage() {
         <div className="video-wrapper">
           <video ref={localVideo} autoPlay playsInline  muted className="video" />
           
-          {availableCameras.length > 1 && (
+          {availableCameras.length > 0 && (
               <button
               
               style={{
