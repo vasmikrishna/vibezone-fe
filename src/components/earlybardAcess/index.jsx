@@ -52,8 +52,11 @@ export default function FreeAccessForm({ handleFormSubmitFreeAccess }) {
 
   return (
     <div className="form-container">
+      <div style={ { color: '#007bff'}}>
       <h2>Get Lifetime Free Access!</h2>
       <p>Sign up now to claim your lifetime free access. Limited to the first 1000 users.</p>
+      </div>
+      
       {submitted ? (
         <div className="success-message">
           <h3>Thank you!</h3>
