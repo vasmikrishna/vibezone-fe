@@ -52,6 +52,7 @@ export default function VideoPage() {
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false); // Track submission state
+  const [cameraMode, setCameraMode] = useState(true);
 
   useEffect(() => {
     const submittedStatus = localStorage.getItem('freeAccessSubmitted');
@@ -187,7 +188,7 @@ export default function VideoPage() {
       // Cross-platform constraints
       const constraints = {
         video: isIOS
-          ? { facingMode: deviceId ? { exact: 'environment' } : 'user' } // iOS prefers facingMode
+          ? { facingMode: cameraMode ? 'environment': 'user' } // iOS prefers facingMode
           : { deviceId: { exact: selectedDeviceId } }, // Default for other platforms
         audio: micOn,
       };
@@ -224,7 +225,7 @@ export default function VideoPage() {
         // Use facingMode for mobile devices
         const newStream = await getStream(nextCamera.deviceId);
 
-
+        cameraMode(!cameraMode);
         setCurrentCameraIndex(nextCameraIndex);
         console.log(`Switched to camera: ${nextCamera.label}`);
 
