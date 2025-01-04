@@ -187,7 +187,7 @@ export default function VideoPage() {
   
       // Cross-platform constraints
       const constraints = {
-        video: isIOS
+        video: videoOn && isIOS
           ? { facingMode: { exact: cameraMode ? 'user' : 'environment' }} // iOS prefers facingMode
           : { deviceId: { exact: selectedDeviceId } }, // Default for other platforms
         audio: micOn,
@@ -325,7 +325,7 @@ export default function VideoPage() {
   useEffect(() => {
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const stream = await getStream();
         setLocalStream(stream);
         setIsStreaming(true);
         if (localVideo.current) {
