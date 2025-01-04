@@ -33,6 +33,7 @@ export default function VideoPage() {
   const wsRef = useRef(null);
   const pcRef = useRef(null);
 
+  const [serverUrl, setServerUrl] = useState('https://vibezone.in/');
   const [partnerId, setPartnerId] = useState(null);
   const [role, setRole] = useState(null); // 'caller' or 'callee'
   const [localStream, setLocalStream] = useState(null);
@@ -110,8 +111,8 @@ export default function VideoPage() {
 
     // Function to initialize the WebSocket connection
     const initializeWebSocket = () => {
-      // wsRef.current = new WebSocket('https://vibezone.in/');
-      wsRef.current = new WebSocket('http://localhost:3001/');
+      wsRef.current = new WebSocket(serverUrl);
+      // wsRef.current = new WebSocket('http://localhost:3001/');
   
       wsRef.current.onopen = () => {
         console.log('Connected to signaling server');
