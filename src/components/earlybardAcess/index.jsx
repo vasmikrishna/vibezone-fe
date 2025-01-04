@@ -26,7 +26,7 @@ export default function FreeAccessForm({ handleFormSubmitFreeAccess }) {
     setErrorMessage(''); // Clear previous errors
 
     try {
-      const response = await fetch('http://localhost:3001/api/early-bird-access', {
+      const response = await fetch('https://vibezone.in/api/early-bird-access', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
