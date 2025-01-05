@@ -249,8 +249,8 @@ export default function VideoPage() {
 
     // Function to initialize the WebSocket connection
     const initializeWebSocket = () => {
-      // wsRef.current = new WebSocket(serverUrl);
-      wsRef.current = new WebSocket('http://localhost:3001/');
+      wsRef.current = new WebSocket(serverUrl);
+      // wsRef.current = new WebSocket('http://localhost:3001/');
   
       wsRef.current.onopen = () => {
         console.log('Connected to signaling server');
