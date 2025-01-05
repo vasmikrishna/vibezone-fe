@@ -35,6 +35,8 @@ export default function VideoPage() {
 
   const [serverUrl, setServerUrl] = useState('https://vibezone.in/');
   const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [networkSpeed, setNetworkSpeed] = useState(null);
+  const [networkQuality, setNetworkQuality] = useState('Unknown');
   const [partnerId, setPartnerId] = useState(null);
   const [role, setRole] = useState(null); // 'caller' or 'callee'
   const [localStream, setLocalStream] = useState(null);
@@ -54,6 +56,42 @@ export default function VideoPage() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false); // Track submission state
   const [cameraMode, setCameraMode] = useState(true);
+
+  const checkNetworkSpeed = () => {
+    if ('connection' in navigator) {
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      const { effectiveType, downlink } = connection;
+  
+      // Determine network quality based on downlink and effectiveType
+      let quality = 'Unknown';
+      if (downlink >= 5 || effectiveType === '4g') {
+        quality = 'High';
+      } else if (downlink >= 1 && downlink < 5) {
+        quality = 'Medium';
+      } else if (downlink < 1 || effectiveType === '2g' || effectiveType === 'slow-2g') {
+        quality = 'Low';
+      }
+  
+      setNetworkQuality(quality);
+      setNetworkSpeed({ effectiveType, downlink });
+  
+      // Turn off video if quality is low
+      if (quality === 'Low') {
+        setVideoOn(false);
+      }
+    } else {
+      setNetworkQuality('Unsupported');
+    }
+  };
+  
+  useEffect(() => {
+    checkNetworkSpeed();
+  
+    // Update network speed every 10 seconds
+    const interval = setInterval(checkNetworkSpeed, 10000);
+    return () => clearInterval(interval);
+  }, []);
+  
 
   useEffect(() => {
     const submittedStatus = localStorage.getItem('freeAccessSubmitted');
@@ -619,6 +657,25 @@ export default function VideoPage() {
 
   return (
     <div  style={{ padding: '2rem'}} >
+            <div style={{ textAlign: 'right', marginBottom: '1rem', color: '#333' }}>
+              {networkSpeed && (
+                    <p style={{ fontSize: '14px' }}>
+                      Speed: <strong>{networkSpeed.downlink} Mbps</strong> ({networkSpeed.effectiveType})
+                    </p>
+                  )}
+            </div>
+         <div style={{ textAlign: 'right', marginBottom: '1rem', color: '#333' }}>
+            <p style={{ fontSize: '14px' }}>
+              Network Quality: <strong>{networkQuality}</strong>
+            </p>
+            {networkQuality === 'Low' && (
+              <p style={{ fontSize: '14px', color: 'red' }}>
+                Video disabled due to poor network quality. Please improve your connection.
+              </p>
+            )}
+          </div>
+
+
      <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'end', gap: '0.5rem' }}>
       {hasSubmitted && <InstagramCTA />}
       </div>
