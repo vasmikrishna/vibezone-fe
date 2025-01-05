@@ -45,6 +45,7 @@ export default function VideoPage() {
   const [videoOn, setVideoOn] = useState(true); // Track video state
   const [keyword, setKeyword] = useState('');
   const [isPaused, setisPaused] = useState(true);
+  const [partnerNetworkQuality, setPartnerNetworkQuality] = useState('Unknown');  
 
   const localVideo = useRef(null);
   const remoteVideo = useRef(null);
@@ -56,6 +57,19 @@ export default function VideoPage() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false); // Track submission state
   const [cameraMode, setCameraMode] = useState(true);
+
+
+  const emitNetworkQuality = () => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: 'networkQualityUpdate',
+          quality: networkQuality,
+        })
+      );
+    }
+  };
+  
 
   const checkNetworkSpeed = () => {
     if ('connection' in navigator) {
@@ -74,6 +88,8 @@ export default function VideoPage() {
   
       setNetworkQuality(quality);
       setNetworkSpeed({ effectiveType, downlink });
+
+      emitNetworkQuality();
   
       // Turn off video if quality is low
       if (quality === 'Low') {
@@ -213,6 +229,9 @@ export default function VideoPage() {
         console.log('WS message: =>', data);
   
         switch (data.type) {
+          case 'partnerNetworkUpdate':
+            setPartnerNetworkQuality(data.quality); // Set partner's network quality
+            break;
           case 'connected':
             setSocketId(data.id);
             break;
@@ -628,6 +647,7 @@ export default function VideoPage() {
           height: '100vh', // Full height of the screen
           textAlign: 'center',
           padding: '2rem',
+          color: '#333',
           backgroundColor: '#f8f9fa', // Optional background color for better visibility
         }}
       >
@@ -657,23 +677,28 @@ export default function VideoPage() {
 
   return (
     <div  style={{ padding: '2rem'}} >
-            <div style={{ textAlign: 'right', marginBottom: '1rem', color: '#333' }}>
-              {networkSpeed && (
-                    <p style={{ fontSize: '14px' }}>
-                      Speed: <strong>{networkSpeed.downlink} Mbps</strong> ({networkSpeed.effectiveType})
-                    </p>
-                  )}
-            </div>
-         <div style={{ textAlign: 'right', marginBottom: '1rem', color: '#333' }}>
-            <p style={{ fontSize: '14px' }}>
-              Network Quality: <strong>{networkQuality}</strong>
-            </p>
-            {networkQuality === 'Low' && (
-              <p style={{ fontSize: '14px', color: 'red' }}>
-                Video disabled due to poor network quality. Please improve your connection.
-              </p>
-            )}
-          </div>
+      <div
+        style={{
+          textAlign: 'right',
+        }}
+      >
+        {networkSpeed && (
+          <p style={{ fontSize: '14px', margin: '0' }}>
+            Speed: <strong style={{ color: networkQuality === 'Low' ? '#ff4d4d' : '#fff' }}>{networkSpeed.downlink} Mbps</strong> ({networkSpeed.effectiveType})
+          </p>
+        )}
+      </div>
+
+      <div
+        style={{
+          textAlign: 'right',
+        }}
+      >
+        <p style={{ fontSize: '14px', margin: '0' }}>
+          Network Quality: <strong style={{ color: networkQuality === 'Low' ? '#ff4d4d' : '#fff' }}>{networkQuality}</strong>
+        </p>
+      </div>
+
 
 
      <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'end', gap: '0.5rem' }}>
@@ -771,7 +796,11 @@ export default function VideoPage() {
           transform: 'translateX(-50%)',
           width: '12px',
           height: '12px',
-          backgroundColor: 'green',
+          backgroundColor: 
+          partnerNetworkQuality === 'High' ? '#4caf50' :  
+          partnerNetworkQuality === 'Medium' ? '#ff9800' : 
+          partnerNetworkQuality === 'Low' ? '#f44336' :   
+          '#9e9e9e', 
           borderRadius: '50%',
         }}
         title="Partner Connected"
