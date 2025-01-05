@@ -53,23 +53,46 @@ export default function VideoPage() {
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const [availableCameras, setAvailableCameras] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [previousNetworkQuality, setPreviousNetworkQuality] = useState(null);
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false); // Track submission state
   const [cameraMode, setCameraMode] = useState(true);
+  const partnerIdRef = useRef();
+  const networkQualityRef = useRef();
+  const previousNetworkQualityRef = useRef();
 
 
-  const emitNetworkQuality = () => {
+  useEffect(() => {
+    partnerIdRef.current = partnerId;
+    console.log('messgae sending form the partnerId')
+    emitNetworkQuality();
+  }, [partnerId]);
+
+  useEffect(() => {
+    networkQualityRef.current = networkQuality;    
+  }, [networkQuality]);
+
+  useEffect(() => {
+    previousNetworkQualityRef.current = previousNetworkQuality;
+  }, [previousNetworkQuality]);
+
+
+  const emitNetworkQuality = (quality = networkQualityRef.current) => {
+    if (!partnerIdRef.current) {
+      console.error('partnerId is null or undefined', networkQualityRef.current);
+      return;
+    }
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
           type: 'networkQualityUpdate',
-          quality: networkQuality,
+          quality: quality,
+          to: partnerIdRef.current,
         })
       );
     }
   };
-  
 
   const checkNetworkSpeed = () => {
     if ('connection' in navigator) {
@@ -86,15 +109,24 @@ export default function VideoPage() {
         quality = 'Low';
       }
   
+     
+
+      if ( previousNetworkQualityRef.current !== quality) {
+        console.log('Network quality changed from', previousNetworkQualityRef.current, 'to', quality);
+        emitNetworkQuality(quality);
+      }
+
       setNetworkQuality(quality);
       setNetworkSpeed({ effectiveType, downlink });
 
-      emitNetworkQuality();
+    // Update the previous quality
+      setPreviousNetworkQuality(quality);
+      console.log('Network Quality:', quality, partnerId);
   
       // Turn off video if quality is low
-      if (quality === 'Low') {
-        setVideoOn(false);
-      }
+      // if (quality === 'Low') {
+      //   setVideoOn(false);
+      // }
     } else {
       setNetworkQuality('Unsupported');
     }
@@ -217,8 +249,8 @@ export default function VideoPage() {
 
     // Function to initialize the WebSocket connection
     const initializeWebSocket = () => {
-      wsRef.current = new WebSocket(serverUrl);
-      // wsRef.current = new WebSocket('http://localhost:3001/');
+      // wsRef.current = new WebSocket(serverUrl);
+      wsRef.current = new WebSocket('http://localhost:3001/');
   
       wsRef.current.onopen = () => {
         console.log('Connected to signaling server');
@@ -229,9 +261,6 @@ export default function VideoPage() {
         console.log('WS message: =>', data);
   
         switch (data.type) {
-          case 'partnerNetworkUpdate':
-            setPartnerNetworkQuality(data.quality); // Set partner's network quality
-            break;
           case 'connected':
             setSocketId(data.id);
             break;
@@ -258,6 +287,10 @@ export default function VideoPage() {
           case 'hangup':
             endCall();
             break;
+          case 'networkQualityUpdate':
+              console.log('Partner network quality:', data.quality);
+              setPartnerNetworkQuality(data.quality); // Set partner's network quality
+              break;
           default:
             console.warn('Unknown message type:', data.type);
         }
@@ -476,6 +509,7 @@ export default function VideoPage() {
       console.error('Local stream not initialized yet.');
       return;
     }
+  
     const pc = new RTCPeerConnection(configuration, { iceCandidatePoolSize: 10 });
 
     pc.onicegatheringstatechange = () => {
@@ -684,7 +718,7 @@ export default function VideoPage() {
       >
         {networkSpeed && (
           <p style={{ fontSize: '14px', margin: '0' }}>
-            Speed: <strong style={{ color: networkQuality === 'Low' ? '#ff4d4d' : '#fff' }}>{networkSpeed.downlink} Mbps</strong> ({networkSpeed.effectiveType})
+            Speed: <strong style={{ color: networkQuality === 'Low' ? '#ff4d4d' : networkQuality === 'medium' ? '#FFC107' : '#4CAF50' }}>{networkSpeed.downlink} Mbps</strong> ({networkSpeed.effectiveType})
           </p>
         )}
       </div>
@@ -695,7 +729,7 @@ export default function VideoPage() {
         }}
       >
         <p style={{ fontSize: '14px', margin: '0' }}>
-          Network Quality: <strong style={{ color: networkQuality === 'Low' ? '#ff4d4d' : '#fff' }}>{networkQuality}</strong>
+          Network Quality: <strong style={{ color: networkQuality === 'Low' ? '#ff4d4d' : networkQuality === 'medium' ? '#FFC107' : '#4CAF50' }}>{networkQuality}</strong>
         </p>
       </div>
 
