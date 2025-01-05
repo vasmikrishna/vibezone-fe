@@ -34,6 +34,7 @@ export default function VideoPage() {
   const pcRef = useRef(null);
 
   const [serverUrl, setServerUrl] = useState('https://vibezone.in/');
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [partnerId, setPartnerId] = useState(null);
   const [role, setRole] = useState(null); // 'caller' or 'callee'
   const [localStream, setLocalStream] = useState(null);
@@ -79,7 +80,56 @@ export default function VideoPage() {
     localStorage.setItem('freeAccessSubmitted', 'true'); // Persist submission state
   };
 
+  const checkPermissions = async () => {
+    try {
+      const cameraPermission = await navigator.permissions.query({ name: 'camera' });
+      const microphonePermission = await navigator.permissions.query({ name: 'microphone' });
+  
+      if (cameraPermission.state === 'granted' && microphonePermission.state === 'granted') {
+        console.log('Permissions already granted');
+        return true;
+      } else if (cameraPermission.state === 'denied' || microphonePermission.state === 'denied') {
+        console.error('Permissions denied. User needs to enable them manually.');
+        return false;
+      } else {
+        console.log('Permissions need to be requested');
+        return false;
+      }
+    } catch (err) {
+      console.error('Error checking permissions:', err);
+      return false;
+    }
+  };
+  
 
+  const requestPermissions = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      console.log('Permissions granted');
+      return stream;
+    } catch (err) {
+      console.error('Error requesting permissions:', err);
+      return null;
+    }
+  };
+  
+  const initializePermissions = async () => {
+    const granted = await checkPermissions();
+    if (!granted) {
+      const stream = await requestPermissions();
+      if (stream) {
+        setPermissionsGranted(true); // Permissions granted
+        setLocalStream(stream);
+        if (localVideo.current) {
+          localVideo.current.srcObject = stream;
+        }
+      } else {
+        setPermissionsGranted(false); // Permissions denied
+      }
+    } else {
+      setPermissionsGranted(true); // Permissions already granted
+    }
+  };
 
 
   const [activeUsers, setActiveUsers] = useState(1);
@@ -108,6 +158,7 @@ export default function VideoPage() {
     };
 
     requestPermission();
+    initializePermissions();
   }, []);
 
     // Function to initialize the WebSocket connection
@@ -528,6 +579,42 @@ export default function VideoPage() {
   }, [isPaused]);
 
 
+  if (!permissionsGranted) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh', // Full height of the screen
+          textAlign: 'center',
+          padding: '2rem',
+          backgroundColor: '#f8f9fa', // Optional background color for better visibility
+        }}
+      >
+        <h2 style={{ marginBottom: '1rem' }}>Permissions Required</h2>
+        <p style={{ marginBottom: '2rem' }}>
+          This app requires access to your camera and microphone to function. Please grant the necessary permissions and reload the page.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            backgroundColor: '#8F47FF',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+          }}
+        >
+          Reload Page
+        </button>
+      </div>
+    );
+  }
 
 
   return (
