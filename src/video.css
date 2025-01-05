@@ -300,3 +300,23 @@ body.dark-mode .submit-btn:hover {
     padding: 10px;
   }
 }
+
+
+.partner-status {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.partner-status-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: green;
+  border-radius: 50%;
+}
+
+.partner-status-text {
+  font-size: 12px;
+  color: green;
+  margin-top: 5px;
+}

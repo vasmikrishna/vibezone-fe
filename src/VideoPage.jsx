@@ -761,7 +761,22 @@ export default function VideoPage() {
         </div>
         <div className="video-wrapper">
           {partnerId ? (
-            <video ref={remoteVideo} autoPlay playsInline  className="video" />
+            <>
+            <video ref={remoteVideo} autoPlay playsInline className="video" />
+            <div
+        style={{
+          position: 'absolute',
+          bottom: '10px', // Positioned below the video
+          right: '10px',
+          transform: 'translateX(-50%)',
+          width: '12px',
+          height: '12px',
+          backgroundColor: 'green',
+          borderRadius: '50%',
+        }}
+        title="Partner Connected"
+      ></div>
+          </>
           ) : (
             <div className="loader"><CircularProgress color='#8F47FF' /></div>
           )}
