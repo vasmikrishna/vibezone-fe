@@ -16,7 +16,7 @@ import logo from './assets/vibezone-logo.svg';
 import StatusWithNumber from './components/activeUsers';
 import InstagramCTA from './page/insta';
 import FreeAccessForm from './components/earlybardAcess';
-import ViolenceDetection from './components/ViolenceDetection/ViolenceDetection';
+
 
 
 const configuration = {
@@ -728,9 +728,6 @@ export default function VideoPage() {
   return (
     <div  style={{ padding: '2rem'}} >
         {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
-       {/* {localStream && (
-        <ViolenceDetection localStream={localStream} onViolenceDetected={handleViolenceDetected} />
-      ) } */}
       <div
         style={{
           textAlign: 'right',
