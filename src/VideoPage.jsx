@@ -9,12 +9,14 @@ import { logEvent } from "firebase/analytics";
 import { messaging } from "./firebase";
 import { getToken, onMessage } from "firebase/messaging";
 import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
+import Onboarding from "./utils/Onboarding"; // Import the Onboarding component
 import './video.css';
 
 import logo from './assets/vibezone-logo.svg';
 import StatusWithNumber from './components/activeUsers';
 import InstagramCTA from './page/insta';
 import FreeAccessForm from './components/earlybardAcess';
+
 
 
 const configuration = {
@@ -61,6 +63,15 @@ export default function VideoPage() {
   const partnerIdRef = useRef();
   const networkQualityRef = useRef();
   const previousNetworkQualityRef = useRef();
+
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    const hasCompletedOnboarding = localStorage.getItem("hasCompletedOnboarding");
+    if (!hasCompletedOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
 
   useEffect(() => {
@@ -130,6 +141,11 @@ export default function VideoPage() {
     } else {
       setNetworkQuality('Unsupported');
     }
+  };
+
+  const handleViolenceDetected = (transcript) => {
+    console.warn('Violence detected in speech:', transcript);
+    // Add logic to handle violence detection (e.g., block the user)
   };
   
   useEffect(() => {
@@ -711,6 +727,7 @@ export default function VideoPage() {
 
   return (
     <div  style={{ padding: '2rem'}} >
+        {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
       <div
         style={{
           textAlign: 'right',
@@ -772,14 +789,14 @@ export default function VideoPage() {
           <img src={logo} className="logo" alt="logo" />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column', gap: '0.5rem'}}>
-            <button
+            <button className='start-button'
                 onClick={isPaused ? handleResume : handlePause}
                 style={{ width: '70px', padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: isPaused ? '#28a745' : '#dc3545', color: '#fff' }}
               >
             {isPaused ? 'Start' : 'Stop'}
           </button>
             {!isPaused && (
-                <button onClick={skip} style={{ width: '70px',padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: '#8F47FF', color: '#fff', }}>
+                <button className='skip-button' onClick={skip} style={{ width: '70px',padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: '#8F47FF', color: '#fff', }}>
                 Skip
               </button>
             )}
@@ -848,10 +865,10 @@ export default function VideoPage() {
 
       <div className="container">
         <div className="button-container">
-          <button onClick={toggleMic} className="icon-button">
+          <button onClick={toggleMic} className="icon-button video-button" >
             {micOn ? <MicIcon className="icon" /> : <MicOffIcon className="icon" />}
           </button>
-          <button onClick={toggleVideo} className="icon-button">
+          <button onClick={toggleVideo} className="icon-button mute-button">
             {videoOn ? <VideocamIcon className="icon" /> : <VideocamOffIcon className="icon" />}
           </button>
         </div>
