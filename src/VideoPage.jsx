@@ -8,11 +8,14 @@ import { analytics } from "./firebase/firebase";
 import { logEvent } from "firebase/analytics";
 import { messaging } from "./firebase/firebase";
 import { getToken, onMessage } from "firebase/messaging";
+import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
 import './video.css';
 
 import logo from './assets/vibezone-logo.svg';
 import StatusWithNumber from './components/activeUsers';
 import InstagramCTA from './page/insta';
+import FreeAccessForm from './components/earlybardAcess';
+
 
 const configuration = {
   iceServers: [
@@ -30,16 +33,54 @@ export default function VideoPage() {
   const wsRef = useRef(null);
   const pcRef = useRef(null);
 
+  const [serverUrl, setServerUrl] = useState('https://vibezone.in/');
   const [partnerId, setPartnerId] = useState(null);
   const [role, setRole] = useState(null); // 'caller' or 'callee'
   const [localStream, setLocalStream] = useState(null);
   const [socketId, setSocketId] = useState('');
   const [micOn, setMicOn] = useState(true); // Track mic state
   const [videoOn, setVideoOn] = useState(true); // Track video state
-
+  const [keyword, setKeyword] = useState('');
+  const [isPaused, setisPaused] = useState(true);
 
   const localVideo = useRef(null);
   const remoteVideo = useRef(null);
+
+  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
+  const [availableCameras, setAvailableCameras] = useState([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false); // Track submission state
+  const [cameraMode, setCameraMode] = useState(true);
+
+  useEffect(() => {
+    const submittedStatus = localStorage.getItem('freeAccessSubmitted');
+    console.log('submittedStatus:', submittedStatus);
+    if (submittedStatus === 'true') {
+      setHasSubmitted(true);
+    }
+  }, []);
+
+  const handlePopupOpen = () => {
+    if (!hasSubmitted) {
+      setIsPopupOpen(true);
+    }
+  };
+
+  const handlePopupClose = () => {
+    setIsPopupOpen(false);
+  };
+
+  const handleFormSubmitFreeAccess = () => {
+    console.log('Form submitted!');
+    setHasSubmitted(true); // Mark as submitted
+    setIsPopupOpen(false); // Close the popup
+    localStorage.setItem('freeAccessSubmitted', 'true'); // Persist submission state
+  };
+
+
+
 
   const [activeUsers, setActiveUsers] = useState(1);
 
@@ -69,33 +110,208 @@ export default function VideoPage() {
     requestPermission();
   }, []);
 
-  // useEffect(() => {
-  //   const requestNotificationPermission = async () => {
-  //     try {
-  //       const permission = await Notification.requestPermission();
-  //       if (permission === "granted") {
-  //         console.log("Notification permission granted.");
-  //         // Get FCM Token
-  //         const token = await getToken(messaging, {
-  //           vapidKey: "YOUR_PUBLIC_VAPID_KEY", // Replace with your actual VAPID key
-  //         });
-  //         if (token) {
-  //           console.log("FCM Token:", token);
-  //           // You can send this token to your backend server for future use
-  //         } else {
-  //           console.log("No registration token available. Request permission to generate one.");
-  //         }
-  //       } else {
-  //         console.log("Notification permission denied.");
-  //       }
-  //     } catch (error) {
-  //       console.error("An error occurred while requesting notification permission:", error);
-  //     }
-  //   };
+    // Function to initialize the WebSocket connection
+    const initializeWebSocket = () => {
+      wsRef.current = new WebSocket(serverUrl);
+      // wsRef.current = new WebSocket('http://localhost:3001/');
   
-  //   requestNotificationPermission();
-  // }, []);
+      wsRef.current.onopen = () => {
+        console.log('Connected to signaling server');
+      };
   
+      wsRef.current.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        console.log('WS message: =>', data);
+  
+        switch (data.type) {
+          case 'connected':
+            setSocketId(data.id);
+            break;
+          case 'activeUsers':
+            setActiveUsers(data.value);
+            break;
+          case 'matched':
+            setPartnerId(data.partnerId);
+            setRole(data.role);
+            initPeerConnection(data.partnerId);
+            if (data.role === 'caller') {
+              createOffer(data.partnerId);
+            }
+            break;
+          case 'offer':
+            handleOffer(data.offer, data.from);
+            break;
+          case 'answer':
+            handleAnswer(data.answer);
+            break;
+          case 'candidate':
+            handleCandidate(data.candidate);
+            break;
+          case 'hangup':
+            endCall();
+            break;
+          default:
+            console.warn('Unknown message type:', data.type);
+        }
+      };
+  
+      wsRef.current.onerror = (err) => {
+        console.error('WebSocket error:', err);
+      };
+  
+      wsRef.current.onclose = () => {
+        console.log('Disconnected from signaling server');
+      };
+    };
+
+  const getStream = async (deviceId = null) => {
+    try {
+      // Detect device type
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+      const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+      const isAndroid = /Android/i.test(userAgent);
+  
+      console.log(`Device detected: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop/Other'}`);
+  
+      // Fetch available video input devices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+  
+      if (videoDevices.length === 0) {
+        console.error('No video input devices found.');
+        return null;
+      }
+  
+      // If no deviceId is provided, use the first available camera
+      const selectedDeviceId = deviceId || videoDevices[0].deviceId;
+  
+      // Cross-platform constraints
+      const constraints = {
+        video: videoOn && isIOS
+          ? { facingMode:'user' } // iOS prefers facingMode
+          : { deviceId: { exact: selectedDeviceId } }, // Default for other platforms
+        audio: micOn,
+      };
+  
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log(`Using camera: ${selectedDeviceId}`);
+      return stream;
+    } catch (err) {
+      // Handle errors
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        console.error('No camera or microphone found.');
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        console.error('Permission denied for accessing media devices.');
+      } else if (err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError') {
+        console.error('Constraints cannot be satisfied by available devices.');
+      } else {
+        console.error('Error accessing media devices:', err);
+      }
+      return null;
+    }
+  };
+  
+  const renegotiate = async () => {
+    const pc = pcRef.current;
+    if (!pc) return;
+  
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+  
+      // Send the new offer to the partner
+      wsRef.current.send(
+        JSON.stringify({
+          type: "offer",
+          offer: pc.localDescription,
+          to: partnerId,
+        })
+      );
+      console.log("Renegotiation offer sent.");
+    } catch (err) {
+      console.error("Error during renegotiation:", err);
+    }
+  };
+
+
+  const switchCamera = async () => {
+    if (availableCameras.length > 0) {
+      const nextCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+      console.log('Next camera index:', nextCameraIndex);
+      console.log('Available cameras:', availableCameras);
+      const nextCamera = availableCameras[nextCameraIndex];
+  
+      try {
+     
+  
+        // Use facingMode for mobile devices
+        const newStream = await getStream(nextCamera.deviceId);
+
+        setCameraMode(!cameraMode);
+        setCurrentCameraIndex(nextCameraIndex);
+        console.log(`Switched to camera: ${nextCamera.label}`);
+
+        if(!newStream?.active){
+          console.log('No video tracks found');
+          return;
+        }
+
+        // Stop the old tracks to release resources
+        localStream?.getTracks().forEach((track) => track.stop());
+  
+        // Replace the video track in the WebRTC PeerConnection
+        const videoTrack = newStream.getVideoTracks()[0];
+        const sender = pcRef.current
+          ?.getSenders()
+          ?.find((sender) => sender.track.kind === "video");
+  
+        if (sender) {
+          await sender.replaceTrack(videoTrack); // Replace track without renegotiation
+        } else {
+          console.warn("No sender found for video track.");
+        }
+  
+        // Update the local video element and state
+        setLocalStream(newStream);
+        if (localVideo.current) {
+          localVideo.current.srcObject = newStream;
+        }
+  
+        setCurrentCameraIndex(nextCameraIndex);
+        console.log(`Switched to camera: ${nextCamera.label}`);
+        await renegotiate();
+      } catch (err) {
+        setCurrentCameraIndex((currentCameraIndex+1) % availableCameras.length);
+        console.error("Error switching camera:", err);
+      }
+    } else {
+      console.warn("No additional cameras available to switch.");
+    }
+  };
+  
+
+  useEffect(() => {
+    const getCameras = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        setAvailableCameras(videoDevices);
+  
+        if (videoDevices.length > 0) {
+          const stream = await getStream(videoDevices[0].deviceId);
+          setLocalStream(stream);
+          if (localVideo.current) {
+            localVideo.current.srcObject = stream;
+          }
+        }
+      } catch (err) {
+        console.error('Error accessing cameras:', err);
+      }
+    };
+  
+    getCameras();
+  }, []);
+   
 
   useEffect(() => {
     // Handle incoming messages while the app is in the foreground
@@ -108,85 +324,6 @@ export default function VideoPage() {
       });
     });
   }, []);
-
-  useEffect(() => {
-
-    logEvent(analytics, "app_opened");
-    
-    // 1. Connect to signaling server
-    // IMPORTANT: Use "ws://localhost:3001", not "http://"
-    // wsRef.current = new WebSocket('http://localhost:3001/');
-    wsRef.current = new WebSocket('https://vibezone.in/');
-
-
-    wsRef.current.onopen = () => {
-      console.log('Connected to signaling server',wsRef.current );
-    };
-
-    wsRef.current.onmessage = async (event) => {
-      const data = JSON.parse(event.data);
-      console.log('WS message: =>', data);
-
-      switch (data.type) {
-        case 'connected':
-          console.log('Socket ID:', data.id);
-          setSocketId(data.id);
-          break;
-        case 'activeUsers':
-          console.log('Active users:', data.value);
-          setActiveUsers(data.value);
-          break;
-        case 'matched':
-          // We have a partner now
-          setPartnerId(data.partnerId);
-          setRole(data.role);
-          console.log(`Matched with ${data.partnerId}, I am the ${data.role}`);
-          // Initialize PeerConnection
-          initPeerConnection(data.partnerId);
-          // If I'm caller, immediately create offer
-          if (data.role === 'caller') {
-            console.log('Creating offer...');
-            createOffer(data.partnerId);
-          }
-          break;
-
-        case 'offer':
-          // We are the callee, automatically handle the offer
-          console.log('Received offer from:', data.from);
-          handleOffer(data.offer, data.from);
-          break;
-
-        case 'answer':
-          // We are the caller
-          console.log('Received answer from:', data.from);
-          handleAnswer(data.answer);
-          break;
-
-        case 'candidate':
-          console.log('Received candidate from:', data.from);
-          handleCandidate(data.candidate);
-          break;
-
-        case 'hangup':
-          console.log('Received hangup from:', data.from);
-          endCall();
-          break;
-      }
-    };
-
-    wsRef.current.onerror = (err) => {
-      console.error('WebSocket error:', err);
-    };
-
-    wsRef.current.onclose = () => {
-      console.log('Disconnected from signaling server');
-    };
-
-    return () => {
-      console.log('Disconnecting...');
-      wsRef.current.close();
-    };
-  }, [localStream]);
 
   const toggleMic = () => {
     if (localStream) {
@@ -211,8 +348,9 @@ export default function VideoPage() {
   useEffect(() => {
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const stream = await getStream();
         setLocalStream(stream);
+        setIsStreaming(true);
         if (localVideo.current) {
           localVideo.current.srcObject = stream;
         }
@@ -356,29 +494,126 @@ export default function VideoPage() {
     endCall();
   }
 
+  const handlePause = () => {
+    endCall();
+    wsRef.current?.close();
+    wsRef.current = null;
+    setisPaused(true);
+  };
+
+  const handleResume = async () => {
+    setisPaused(false);
+    initializeWebSocket();
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+    setAvailableCameras(videoDevices);
+
+    if (videoDevices.length > 0) {
+      const stream = await getStream(videoDevices[0].deviceId);
+      setLocalStream(stream);
+      if (localVideo.current) {
+        localVideo.current.srcObject = stream;
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!isPaused) {
+      initializeWebSocket();
+    }
+
+    return () => {
+      wsRef.current?.close();
+    };
+  }, [isPaused]);
+
+
+
+
   return (
     <div  style={{ padding: '2rem'}} >
-      <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}>
-        <InstagramCTA />
+     <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'end', gap: '0.5rem' }}>
+      {hasSubmitted && <InstagramCTA />}
       </div>
+      {/* Free Access Button */}
+      {
+        !hasSubmitted && (
+          <div className="free-access-btn-container">
+            <button className="free-access-btn" onClick={handlePopupOpen}>
+              Get Lifetime Free Access!
+            </button>
+          </div>
+        )
+      }
+
+      
+
+      {/* Popup Modal */}
+      {isPopupOpen && (
+        <div className="popup-modal">
+          <div className="popup-content">
+            <button className="close-btn" onClick={handlePopupClose}>
+              &times;
+            </button>
+            <FreeAccessForm handleFormSubmitFreeAccess={handleFormSubmitFreeAccess} />
+          </div>
+        </div>
+      )}
+      
  
       <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}> 
         <StatusWithNumber number={activeUsers} />
       </div>
       <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'space-between', gap: '0.5rem' }}> 
-        <div> 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}> 
           <img src={logo} className="logo" alt="logo" />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center'}}>
-            <button onClick={skip} style={{ width: '70px',padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: '#8F47FF', color: '#fff', }}>
-              Skip
-            </button>
+        <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column', gap: '0.5rem'}}>
+            <button
+                onClick={isPaused ? handleResume : handlePause}
+                style={{ width: '70px', padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: isPaused ? '#28a745' : '#dc3545', color: '#fff' }}
+              >
+            {isPaused ? 'Start' : 'Stop'}
+          </button>
+            {!isPaused && (
+                <button onClick={skip} style={{ width: '70px',padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: '#8F47FF', color: '#fff', }}>
+                Skip
+              </button>
+            )}
         </div>
       </div>
+      {/* <p>{JSON.stringify(availableCameras)} cams {currentCameraIndex}</p> */}
       
       <div className="video-container">
         <div className="video-wrapper">
           <video ref={localVideo} autoPlay playsInline  muted className="video" />
+          
+          {/* {availableCameras.length > 0 && (
+              <button
+              
+              style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                border: 'none',
+                borderRadius: '50%',
+                padding: '3px', 
+                color: 'white',
+                boxShadow: '0 4px 4px rgba(0, 0, 0, 0.2)',
+              }}
+            >
+              <CameraswitchIcon onClick={switchCamera} style={{ fontSize: '14px', 
+                backgroundColor: '#6C63FF', 
+                padding: '7px', 
+                borderRadius: '50%',
+                position: 'absolute',
+                top: '-5px',
+                right: '-5px',
+                cursor: 'pointer',
+                }} /> 
+            </button>
+          )} */}
+
         </div>
         <div className="video-wrapper">
           {partnerId ? (
@@ -388,7 +623,6 @@ export default function VideoPage() {
           )}
         </div>
       </div>
-
 
       <div className="container">
         <div className="button-container">
