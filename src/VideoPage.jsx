@@ -19,16 +19,44 @@ import FreeAccessForm from './components/earlybardAcess';
 
 
 
+// const configuration = {
+//   iceServers: [
+//     { urls: 'stun:43.204.141.222:3478' },
+//     {
+//       urls: 'turn:43.204.141.222:3478',
+//       username: 'vamsi',
+//       credential: '9100684109',
+//     },
+//   ],
+// };
+
 const configuration = {
   iceServers: [
-    { urls: 'stun:43.204.141.222:3478' },
     {
-      urls: 'turn:43.204.141.222:3478',
+      // STUN-only on port 3478
+      urls: 'stun:43.204.141.222:3478'
+    },
+    {
+      // TURN over multiple transports (UDP, TCP, and TLS)
+      urls: [
+        'turn:43.204.141.222:3478?transport=udp',
+        'turn:43.204.141.222:3478?transport=tcp',
+        'turns:43.204.141.222:443?transport=tcp'
+        // or 'turns:43.204.141.222:5349?transport=tcp' if you're using 5349
+      ],
       username: 'vamsi',
       credential: '9100684109',
     },
   ],
+
+  // Let WebRTC try direct (UDP) first, then use TURN if needed.
+  // Set to 'relay' if you want to force everything via TURN.
+  iceTransportPolicy: 'all', 
+
+  // Increase ICE candidate gathering pool if you want more thorough candidate discovery.
+  iceCandidatePoolSize: 10,
 };
+
 
 
 export default function VideoPage() {
@@ -526,7 +554,7 @@ export default function VideoPage() {
       return;
     }
   
-    const pc = new RTCPeerConnection(configuration, { iceCandidatePoolSize: 10 });
+    const pc = new RTCPeerConnection(configuration, { iceCandidatePoolSize: 10,  });
 
     pc.onicegatheringstatechange = () => {
       console.log('ICE gathering state:', pc.iceGatheringState);
@@ -544,17 +572,51 @@ export default function VideoPage() {
       });
     }
 
-    // When we get a remote track, show it in remoteVideo
     pc.ontrack = (event) => {
-      console.log('Received remote track');
-      if (remoteVideo.current) {
-        remoteVideo.current.srcObject = event.streams[0];
+      // Grab the first stream from the event
+      const [incomingStream] = event.streams;
+    
+      console.log("Received remote stream:", incomingStream);
+    
+      // Log each track’s kind and state
+      incomingStream.getTracks().forEach((track) => {
+        console.log(
+          `Track kind: ${track.kind}, enabled: ${track.enabled}, readyState: ${track.readyState}`
+        );
+      });
+    
+      // Check for at least one video track
+      const videoTracks = incomingStream.getVideoTracks();
+      if (videoTracks.length === 0) {
+        console.log("No remote video track received!");
+      } else {
+        console.log("We do have a remote video track.");
       }
-    };
+    
+      // Check for at least one audio track
+      const audioTracks = incomingStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        console.log("No remote audio track received!");
+      } else {
+        console.log("We do have a remote audio track.");
+      }
+    
+      // Attach the incoming stream to the remote <video> element
+      if (remoteVideo.current) {
+        // Reset in case some browsers hold onto old streams
+        remoteVideo.current.srcObject = null;
+        remoteVideo.current.srcObject = incomingStream;
+        console.log("Remote video attached successfully.");
+      } else {
+        console.error("Remote video element not found.");
+      }
+    };    
+    
+    
 
     // onicecandidate => send to partner
     pc.onicecandidate = (event) => {
-      console.log('ICE candidate:', event.candidate);
+      console.log('Local ICE candidate:', event.candidate);
       if (event.candidate) {
         wsRef.current.send(JSON.stringify({
           type: 'candidate',
@@ -563,6 +625,28 @@ export default function VideoPage() {
         }));
       }
     };
+
+    const sender = pc.getSenders().find((s) => s.track.kind === "video");
+    if (sender) {
+      const params = sender.getParameters();
+      params.encodings[0] = {
+        maxBitrate: 300000, // Lower bitrate for weak networks
+      };
+      sender.setParameters(params);
+    }
+
+
+    pc.getStats().then((stats) => {
+      stats.forEach((report) => {
+        if (report.type === "candidate-pair" && report.currentRoundTripTime) {
+          console.log("Round Trip Time:", report.currentRoundTripTime);
+        }
+        if (report.type === "inbound-rtp" && report.kind === "video") {
+          console.log("Video Packet Loss:", report.packetsLost);
+        }
+      });
+    });
+    
   }
 
   /** Caller: create offer automatically if I'm "caller" */
@@ -724,6 +808,20 @@ export default function VideoPage() {
     );
   }
 
+  const checkTheTracks = () => {  
+    remoteVideo.current.autoPlay = true;    
+    pcRef.current?.getStats().then((stats) => {
+      console.log(stats);
+    stats.forEach((report) => {
+      if (report.type === "inbound-rtp" && report.kind === "video") {
+        console.log("Video inbound-rtp stats:", report);
+        console.log("Packets received:", report.packetsReceived);
+        console.log("Frames decoded:", report.framesDecoded);
+      }
+    });
+  });
+  }
+
 
   return (
     <div  style={{ padding: '2rem'}} >
@@ -739,6 +837,7 @@ export default function VideoPage() {
           </p>
         )}
       </div>
+      <button onClick={checkTheTracks} >Check</button>
 
       <div
         style={{
