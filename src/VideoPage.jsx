@@ -9,6 +9,7 @@ import { logEvent } from "firebase/analytics";
 import { messaging } from "./firebase";
 import { getToken, onMessage } from "firebase/messaging";
 import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
+import Onboarding from "./utils/Onboarding"; // Import the Onboarding component
 import './video.css';
 
 import logo from './assets/vibezone-logo.svg';
@@ -17,16 +18,45 @@ import InstagramCTA from './page/insta';
 import FreeAccessForm from './components/earlybardAcess';
 
 
+
+// const configuration = {
+//   iceServers: [
+//     { urls: 'stun:43.204.141.222:3478' },
+//     {
+//       urls: 'turn:43.204.141.222:3478',
+//       username: 'vamsi',
+//       credential: '9100684109',
+//     },
+//   ],
+// };
+
 const configuration = {
   iceServers: [
-    { urls: 'stun:43.204.141.222:3478' },
     {
-      urls: 'turn:43.204.141.222:3478',
+      // STUN-only on port 3478
+      urls: 'stun:43.204.141.222:3478'
+    },
+    {
+      // TURN over multiple transports (UDP, TCP, and TLS)
+      urls: [
+        'turn:43.204.141.222:3478?transport=udp',
+        'turn:43.204.141.222:3478?transport=tcp',
+        'turns:43.204.141.222:443?transport=tcp'
+        // or 'turns:43.204.141.222:5349?transport=tcp' if you're using 5349
+      ],
       username: 'vamsi',
       credential: '9100684109',
     },
   ],
+
+  // Let WebRTC try direct (UDP) first, then use TURN if needed.
+  // Set to 'relay' if you want to force everything via TURN.
+  iceTransportPolicy: 'all', 
+
+  // Increase ICE candidate gathering pool if you want more thorough candidate discovery.
+  iceCandidatePoolSize: 10,
 };
+
 
 
 export default function VideoPage() {
@@ -62,6 +92,15 @@ export default function VideoPage() {
   const partnerIdRef = useRef();
   const networkQualityRef = useRef();
   const previousNetworkQualityRef = useRef();
+
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    const hasCompletedOnboarding = localStorage.getItem("hasCompletedOnboarding");
+    if (!hasCompletedOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
 
   useEffect(() => {
@@ -139,6 +178,11 @@ export default function VideoPage() {
     } else {
       setNetworkQuality('Unsupported');
     }
+  };
+
+  const handleViolenceDetected = (transcript) => {
+    console.warn('Violence detected in speech:', transcript);
+    // Add logic to handle violence detection (e.g., block the user)
   };
   
   useEffect(() => {
@@ -519,7 +563,7 @@ export default function VideoPage() {
       return;
     }
   
-    const pc = new RTCPeerConnection(configuration, { iceCandidatePoolSize: 10 });
+    const pc = new RTCPeerConnection(configuration, { iceCandidatePoolSize: 10,  });
 
     pc.onicegatheringstatechange = () => {
       console.log('ICE gathering state:', pc.iceGatheringState);
@@ -537,13 +581,47 @@ export default function VideoPage() {
       });
     }
 
-    // When we get a remote track, show it in remoteVideo
     pc.ontrack = (event) => {
-      console.log('Received remote track');
-      if (remoteVideo.current) {
-        remoteVideo.current.srcObject = event.streams[0];
+      // Grab the first stream from the event
+      const [incomingStream] = event.streams;
+    
+      console.log("Received remote stream:", incomingStream);
+    
+      // Log each track’s kind and state
+      incomingStream.getTracks().forEach((track) => {
+        console.log(
+          `Track kind: ${track.kind}, enabled: ${track.enabled}, readyState: ${track.readyState}`
+        );
+      });
+    
+      // Check for at least one video track
+      const videoTracks = incomingStream.getVideoTracks();
+      if (videoTracks.length === 0) {
+        console.log("No remote video track received!");
+      } else {
+        console.log("We do have a remote video track.");
       }
-    };
+    
+      // Check for at least one audio track
+      const audioTracks = incomingStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        console.log("No remote audio track received!");
+      } else {
+        console.log("We do have a remote audio track.");
+      }
+    
+      // Attach the incoming stream to the remote <video> element
+      if (remoteVideo.current) {
+        // Reset in case some browsers hold onto old streams
+        remoteVideo.current.srcObject = null;
+        remoteVideo.current.srcObject = incomingStream;
+        console.log("Remote video attached successfully.");
+      } else {
+        console.error("Remote video element not found.");
+      }
+    };    
+    
+    
 
     // onicecandidate => send to partner
     pc.onicecandidate = (event) => {
@@ -563,6 +641,28 @@ export default function VideoPage() {
         }));
       }
     };
+
+    const sender = pc.getSenders().find((s) => s.track.kind === "video");
+    if (sender) {
+      const params = sender.getParameters();
+      params.encodings[0] = {
+        maxBitrate: 300000, // Lower bitrate for weak networks
+      };
+      sender.setParameters(params);
+    }
+
+
+    pc.getStats().then((stats) => {
+      stats.forEach((report) => {
+        if (report.type === "candidate-pair" && report.currentRoundTripTime) {
+          console.log("Round Trip Time:", report.currentRoundTripTime);
+        }
+        if (report.type === "inbound-rtp" && report.kind === "video") {
+          console.log("Video Packet Loss:", report.packetsLost);
+        }
+      });
+    });
+    
   }
 
   /** Caller: create offer automatically if I'm "caller" */
@@ -745,11 +845,26 @@ export default function VideoPage() {
     );
   }
 
+  const checkTheTracks = () => {  
+    remoteVideo.current.autoPlay = true;    
+    pcRef.current?.getStats().then((stats) => {
+      console.log(stats);
+    stats.forEach((report) => {
+      if (report.type === "inbound-rtp" && report.kind === "video") {
+        console.log("Video inbound-rtp stats:", report);
+        console.log("Packets received:", report.packetsReceived);
+        console.log("Frames decoded:", report.framesDecoded);
+      }
+    });
+  });
+  }
+
 
   return (
     <div  style={{ padding: '2rem'}} >
       <button onClick={handleGetIps} style={{ marginBottom: '1rem' }}>Get IPs</button>
       <p>{ipAddresses.length > 0 ? `IPs: ${ipAddresses.join(', ')}` : 'No IPs found'}</p>
+        {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
       <div
         style={{
           textAlign: 'right',
@@ -761,6 +876,7 @@ export default function VideoPage() {
           </p>
         )}
       </div>
+      {/* <button onClick={checkTheTracks} >Check</button> */}
 
       <div
         style={{
@@ -811,14 +927,14 @@ export default function VideoPage() {
           <img src={logo} className="logo" alt="logo" />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column', gap: '0.5rem'}}>
-            <button
+            <button className='start-button'
                 onClick={isPaused ? handleResume : handlePause}
                 style={{ width: '70px', padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: isPaused ? '#28a745' : '#dc3545', color: '#fff' }}
               >
             {isPaused ? 'Start' : 'Stop'}
           </button>
             {!isPaused && (
-                <button onClick={skip} style={{ width: '70px',padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: '#8F47FF', color: '#fff', }}>
+                <button className='skip-button' onClick={skip} style={{ width: '70px',padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: '#8F47FF', color: '#fff', }}>
                 Skip
               </button>
             )}
@@ -887,10 +1003,10 @@ export default function VideoPage() {
 
       <div className="container">
         <div className="button-container">
-          <button onClick={toggleMic} className="icon-button">
+          <button onClick={toggleMic} className="icon-button video-button" >
             {micOn ? <MicIcon className="icon" /> : <MicOffIcon className="icon" />}
           </button>
-          <button onClick={toggleVideo} className="icon-button">
+          <button onClick={toggleVideo} className="icon-button mute-button">
             {videoOn ? <VideocamIcon className="icon" /> : <VideocamOffIcon className="icon" />}
           </button>
         </div>

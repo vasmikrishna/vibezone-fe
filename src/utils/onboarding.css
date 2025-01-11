@@ -1,0 +1,9 @@
+.react-joyride__tooltip {
+    width: 150px !important; /* Allow the tooltip width to adjust automatically */
+    max-width: 350px !important; /* Set a reasonable maximum width */
+    white-space: normal !important; /* Allow text to wrap if it’s too long */
+    overflow-wrap: break-word !important; /* Break words if they’re too long */
+    word-wrap: break-word !important; /* Fallback for older browsers */
+    word-break: break-word !important; /* Break long words */
+    box-sizing: border-box !important; /* Ensure padding is included in the width */
+  }
