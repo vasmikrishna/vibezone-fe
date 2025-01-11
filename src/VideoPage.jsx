@@ -862,8 +862,8 @@ export default function VideoPage() {
 
   return (
     <div  style={{ padding: '2rem'}} >
-      <button onClick={handleGetIps} style={{ marginBottom: '1rem' }}>Get IPs</button>
-      <p>{ipAddresses.length > 0 ? `IPs: ${ipAddresses.join(', ')}` : 'No IPs found'}</p>
+      {/* <button onClick={handleGetIps} style={{ marginBottom: '1rem' }}>Get IPs</button>
+      <p>{ipAddresses.length > 0 ? `IPs: ${ipAddresses.join(', ')}` : 'No IPs found'}</p> */}
         {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
       <div
         style={{
