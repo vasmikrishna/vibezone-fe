@@ -58,6 +58,7 @@ export default function VideoPage() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false); // Track submission state
   const [cameraMode, setCameraMode] = useState(true);
+  const [ipAddresses, setIpAddresses] = useState([]);
   const partnerIdRef = useRef();
   const networkQualityRef = useRef();
   const previousNetworkQualityRef = useRef();
@@ -76,6 +77,14 @@ export default function VideoPage() {
   useEffect(() => {
     previousNetworkQualityRef.current = previousNetworkQuality;
   }, [previousNetworkQuality]);
+
+  const extractIpFromCandidate = (candidate) => {
+    const ipRegex = /(\d{1,3}\.){3}\d{1,3}/;
+    const match = candidate.match(ipRegex);
+    return match ? match[0] : null;
+  };
+
+
 
 
   const emitNetworkQuality = (quality = networkQualityRef.current) => {
@@ -539,6 +548,13 @@ export default function VideoPage() {
     // onicecandidate => send to partner
     pc.onicecandidate = (event) => {
       console.log('ICE candidate:', event.candidate);
+      // Extract IP address and store it
+      const ipAddress = extractIpFromCandidate(event.candidate.candidate);
+      if (ipAddress) {
+        console.log("Extracted IP Address:", ipAddress);
+        setIpAddresses((prev) => Array.from(new Set([...prev, ipAddress]))); // Avoid duplicates
+      }
+
       if (event.candidate) {
         wsRef.current.send(JSON.stringify({
           type: 'candidate',
@@ -602,15 +618,32 @@ export default function VideoPage() {
   }
 
   /** Both: handle ICE candidate */
-  async function handleCandidate(candidate) {
+  // async function handleCandidate(candidate) {
+  //   const pc = pcRef.current;
+  //   if (!pc) return;
+  //   try {
+  //     await pc.addIceCandidate(candidate);
+  //   } catch (err) {
+  //     console.error('Error adding candidate', err);
+  //   }
+  // }
+
+  const handleCandidate = async (candidate) => {
     const pc = pcRef.current;
     if (!pc) return;
     try {
       await pc.addIceCandidate(candidate);
+
+      // Extract IP address from candidate
+      const ipAddress = extractIpFromCandidate(candidate.candidate);
+      if (ipAddress) {
+        console.log("Extracted IP Address:", ipAddress);
+        setIpAddresses((prev) => Array.from(new Set([...prev, ipAddress]))); // Avoid duplicates
+      }
     } catch (err) {
-      console.error('Error adding candidate', err);
+      console.error("Error adding candidate", err);
     }
-  }
+  };
 
   /** End the call and reset */
   function endCall() {
@@ -657,6 +690,10 @@ export default function VideoPage() {
         localVideo.current.srcObject = stream;
       }
     }
+  };
+
+  const handleGetIps = () => {
+    console.log('IPs:', ipAddresses);
   };
 
   useEffect(() => {
@@ -711,6 +748,8 @@ export default function VideoPage() {
 
   return (
     <div  style={{ padding: '2rem'}} >
+      <button onClick={handleGetIps} style={{ marginBottom: '1rem' }}>Get IPs</button>
+      <p>{ipAddresses.length > 0 ? `IPs: ${ipAddresses.join(', ')}` : 'No IPs found'}</p>
       <div
         style={{
           textAlign: 'right',
