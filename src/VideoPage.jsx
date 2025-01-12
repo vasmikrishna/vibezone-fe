@@ -925,19 +925,19 @@ export default function VideoPage() {
           </div>
         </div>
       )}
- 
-      <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}> 
-        <StatusWithNumber number={activeUsers} />
-      </div>
-      <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'space-between', gap: '0.5rem' }}> 
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}> 
-          <img src={logo} className="logo" alt="logo" />
+            <img src={logo} className="logo" alt="logo" />
+          </div>
+        <div style={{ display: 'flex', justifyContent: 'End', gap: '0.5rem' }}> 
+          <StatusWithNumber number={activeUsers} />
         </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '16px', marginBottom: '10px', color: '#8F47FF' }}>Add Your Interests</h3>
           <TagInput onTagsChange={handleTagsChange} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column', gap: '0.5rem'}}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.5rem'}}>
             <button className='start-button'
                 onClick={isPaused ? handleResume : handlePause}
                 style={{ width: '70px', padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: isPaused ? '#28a745' : '#dc3545', color: '#fff' }}
@@ -980,7 +980,7 @@ export default function VideoPage() {
                 right: '-5px',
                 cursor: 'pointer',
                 }} /> 
-            </button>
+            </button> 
           )} */}
 
         </div>
