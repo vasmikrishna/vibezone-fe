@@ -16,6 +16,7 @@ import logo from './assets/vibezone-logo.svg';
 import StatusWithNumber from './components/activeUsers';
 import InstagramCTA from './page/insta';
 import FreeAccessForm from './components/earlybardAcess';
+import TagInput from './components/Tags/taginput';
 
 
 
@@ -94,6 +95,13 @@ export default function VideoPage() {
   const previousNetworkQualityRef = useRef();
 
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [tags, setTags] = useState([]);
+
+  const handleTagsChange = (newTags) => {
+    setTags(newTags);
+    console.log("Current Tags:", newTags);
+    // Add logic to use these tags in your application (e.g., matchmaking)
+  };
 
   useEffect(() => {
     const hasCompletedOnboarding = localStorage.getItem("hasCompletedOnboarding");
@@ -917,7 +925,6 @@ export default function VideoPage() {
           </div>
         </div>
       )}
-      
  
       <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'End', gap: '0.5rem' }}> 
         <StatusWithNumber number={activeUsers} />
@@ -925,6 +932,10 @@ export default function VideoPage() {
       <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'space-between', gap: '0.5rem' }}> 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}> 
           <img src={logo} className="logo" alt="logo" />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
+          <h3 style={{ fontSize: '16px', marginBottom: '10px', color: '#8F47FF' }}>Add Your Interests</h3>
+          <TagInput onTagsChange={handleTagsChange} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column', gap: '0.5rem'}}>
             <button className='start-button'
