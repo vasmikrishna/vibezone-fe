@@ -872,7 +872,7 @@ export default function VideoPage() {
     <div  style={{ padding: '2rem'}} >
       {/* <button onClick={handleGetIps} style={{ marginBottom: '1rem' }}>Get IPs</button>
       <p>{ipAddresses.length > 0 ? `IPs: ${ipAddresses.join(', ')}` : 'No IPs found'}</p> */}
-      { <InstagramCTA />}
+      {/* { <InstagramCTA />} */}
         {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
       <div
         style={{
