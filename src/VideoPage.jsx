@@ -872,6 +872,7 @@ export default function VideoPage() {
     <div  style={{ padding: '2rem'}} >
       {/* <button onClick={handleGetIps} style={{ marginBottom: '1rem' }}>Get IPs</button>
       <p>{ipAddresses.length > 0 ? `IPs: ${ipAddresses.join(', ')}` : 'No IPs found'}</p> */}
+      { <InstagramCTA />}
         {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
       <div
         style={{
@@ -899,10 +900,10 @@ export default function VideoPage() {
 
 
      <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'end', gap: '0.5rem' }}>
-      {hasSubmitted && <InstagramCTA />}
+      {/* {hasSubmitted && <InstagramCTA />} */}
       </div>
       {/* Free Access Button */}
-      {
+      {/* {
         !hasSubmitted && (
           <div className="free-access-btn-container">
             <button className="free-access-btn" onClick={handlePopupOpen}>
@@ -910,7 +911,7 @@ export default function VideoPage() {
             </button>
           </div>
         )
-      }
+      } */}
 
       
 

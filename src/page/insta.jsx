@@ -2,19 +2,21 @@ import React from 'react';
 
 const InstagramCTA = () => {
   return (
-    <div >
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column'}}>
       <a 
-        href="https://www.instagram.com/vibezone_org/profilecard/?igsh=ODJ3NWRjM2V6bDBk" 
+        href="https://x.com/vibezoneorg" 
         target="_blank" 
         rel="noopener noreferrer" 
-        style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', fontSize: '0.9rem',  }}
+        style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', fontSize: '1.5rem', color:'white'}}
       >
-        <img 
-          src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" 
-          alt="Instagram"  width={15} style={{ marginRight: '5px'}}
-        />
-          @vibezone_org
+        {/* <img 
+          src="https://about.x.com/content/dam/about-twitter/x/brand-toolkit/logo-black.png.twimg.1920.png" 
+          alt="X"  width={15} style={{ marginRight: '5px'}}
+        /> */}
+          𝕏
       </a>
+      
+      CA: Coming soon
     </div>
   );
 };
