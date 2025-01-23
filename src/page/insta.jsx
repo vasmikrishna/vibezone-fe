@@ -15,7 +15,7 @@ const InstagramCTA = () => {
         /> */}
           𝕏
       </a>
-      <p style={{ fontSize: '1.5rem', color:'white'}}>CA: Coming soon</p>
+      <p style={{ fontSize: '1.5rem', color:'white'}}>CA: 8QEA8DMUZaZH2xui1VyY97nVfeN3dhxfEBjdYXYpump</p>
     </div>
   );
 };
