@@ -17,6 +17,8 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
 import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
+import CallEndIcon from '@mui/icons-material/CallEnd';
+import SendIcon from '@mui/icons-material/Send';
 import Onboarding from './utils/Onboarding';
 import StatusWithNumber from './components/activeUsers';
 import TagInput from './components/Tags/taginput';
@@ -26,6 +28,8 @@ import './video.css';
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 const MAX_RETRY_MS = 30000;
 const REPLACED_CLOSE_CODE = 4000;
+const MAX_NAME_LENGTH = 30;
+const MAX_CHAT_LENGTH = 500;
 
 const REPORT_REASONS = [
   ['nudity', 'Nudity or sexual content'],
@@ -65,6 +69,9 @@ export default function VideoPage() {
   const retryTimerRef = useRef(null);
   const retryDelayRef = useRef(1000);
   const joinTagsRef = useRef([]);
+  const joinNameRef = useRef('');
+  const chatIdRef = useRef(0);
+  const chatListRef = useRef(null);
   const camerasRef = useRef([]);
   const cameraIndexRef = useRef(0);
   const qualityRef = useRef('Unknown');
@@ -81,7 +88,10 @@ export default function VideoPage() {
   const [tags, setTags] = useState([]);
   const [sharedTags, setSharedTags] = useState([]);
   const [activeUsers, setActiveUsers] = useState(0);
-  const [networkQuality, setNetworkQuality] = useState('Unknown');
+  const [name, setName] = useState(() => localStorage.getItem('vibezoneName') || '');
+  const [partnerName, setPartnerName] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [chatText, setChatText] = useState('');
   const [partnerQuality, setPartnerQuality] = useState('Unknown');
   const [retrySeconds, setRetrySeconds] = useState(0);
   const [bannedUntil, setBannedUntil] = useState(null);
@@ -105,7 +115,6 @@ export default function VideoPage() {
       const quality = measureQuality();
       if (quality !== qualityRef.current) {
         qualityRef.current = quality;
-        setNetworkQuality(quality);
         if (pcRef.current) send({ type: 'networkQualityUpdate', quality });
       }
     };
@@ -121,6 +130,33 @@ export default function VideoPage() {
     if (remoteVideo.current) remoteVideo.current.srcObject = null;
     setSharedTags([]);
     setPartnerQuality('Unknown');
+    setPartnerName('');
+    setMessages([]);
+    setChatText('');
+  };
+
+  useEffect(() => {
+    const list = chatListRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, [messages]);
+
+  const addMessage = (from, text) => {
+    if (typeof text !== 'string') return;
+    chatIdRef.current += 1;
+    setMessages((list) => [...list, { id: chatIdRef.current, from, text }]);
+  };
+
+  const sendChat = (e) => {
+    e.preventDefault();
+    const text = chatText.trim();
+    if (!text || status !== 'connected') return;
+    send({ type: 'chat', text });
+    setChatText('');
+  };
+
+  const changeName = (value) => {
+    setName(value);
+    localStorage.setItem('vibezoneName', value);
   };
 
   const leaveCall = (message) => {
@@ -242,6 +278,7 @@ export default function VideoPage() {
       case 'matched': {
         const pc = createPeer();
         setSharedTags(Array.isArray(data.sharedTags) ? data.sharedTags : []);
+        setPartnerName(typeof data.partnerName === 'string' ? data.partnerName : 'Guest');
         setStatus('connected');
         send({ type: 'networkQualityUpdate', quality: qualityRef.current });
         if (data.role === 'caller') makeOffer(pc);
@@ -259,12 +296,18 @@ export default function VideoPage() {
       case 'networkQualityUpdate':
         setPartnerQuality(data.quality);
         break;
+      case 'chat':
+        addMessage('partner', data.text);
+        break;
+      case 'chatSent':
+        addMessage('me', data.text);
+        break;
       case 'partnerLeft':
         closePeer();
         setStatus('searching');
         break;
       case 'error':
-        setNotice(`Server error: ${data.message}`);
+        setNotice(data.message === 'chat rate limit' ? 'Slow down: at most 2 messages a second.' : `Server error: ${data.message}`);
         break;
       default:
         break;
@@ -290,7 +333,7 @@ export default function VideoPage() {
     wsRef.current = ws;
     setStatus('connecting');
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'join', deviceId: getDeviceId(), tags: joinTagsRef.current }));
+      ws.send(JSON.stringify({ type: 'join', deviceId: getDeviceId(), tags: joinTagsRef.current, name: joinNameRef.current }));
     };
     ws.onmessage = (event) => {
       let data;
@@ -353,6 +396,7 @@ export default function VideoPage() {
     if (!(await getMedia())) return;
     stoppedRef.current = false;
     joinTagsRef.current = tags;
+    joinNameRef.current = name.trim();
     retryDelayRef.current = 1000;
     connect();
   };
@@ -429,7 +473,7 @@ export default function VideoPage() {
   const inCall = status === 'connected';
   const idle = status === 'idle' || status === 'banned';
   const statusText = {
-    idle: 'Press Start to meet someone.',
+    idle: 'Press Connect to meet someone.',
     connecting: 'Connecting…',
     searching: 'Looking for someone…',
     connected: 'Connected',
@@ -442,101 +486,162 @@ export default function VideoPage() {
       <Onboarding />
       <header className="top-bar">
         <img src={logo} className="logo" alt="Vibezone" />
+        <div className="top-fields">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => changeName(e.target.value)}
+            maxLength={MAX_NAME_LENGTH}
+            placeholder="Enter Name"
+            aria-label="Your display name"
+            className="name-input"
+            data-testid="name-input"
+          />
+          <TagInput onTagsChange={setTags} />
+          <Button
+            className="start-button"
+            variant="contained"
+            disableElevation
+            color={idle ? 'primary' : 'error'}
+            onClick={idle ? start : stop}
+            data-testid="start-stop"
+          >
+            {idle ? 'Connect' : 'Stop'}
+          </Button>
+        </div>
         <div className="top-bar-info">
           <StatusWithNumber number={activeUsers} />
-          <span className="network">
-            Network:{' '}
-            <strong style={{ color: QUALITY_COLORS[networkQuality] || '#9e9e9e' }}>{networkQuality}</strong>
-          </span>
         </div>
       </header>
+      {!idle && <p className="hint">Name and key word changes apply the next time you press Connect.</p>}
 
-      <div className="video-container">
-        <div className="video-wrapper">
-          <video ref={localVideo} autoPlay playsInline muted className="video local" data-testid="local-video" />
-          {cameraCount > 1 && (
-            <IconButton
-              className="switch-camera"
-              onClick={switchCamera}
-              aria-label="Switch camera"
-              data-testid="switch-camera"
-            >
-              <CameraswitchIcon />
-            </IconButton>
-          )}
-        </div>
-        <div className="video-wrapper">
-          <video ref={remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
-          {inCall ? (
-            <span
-              className="partner-quality"
-              style={{ backgroundColor: QUALITY_COLORS[partnerQuality] || '#9e9e9e' }}
-              title={`Partner network: ${partnerQuality}`}
-            />
-          ) : (
-            <div className="loader">
-              {!idle && <CircularProgress sx={{ color: '#8F47FF' }} aria-label="Searching" />}
+      <main className="call-layout">
+        <section className="call-column" aria-label="Video call">
+          <div className="video-container">
+            <div className="video-wrapper">
+              <video ref={remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
+              {inCall ? (
+                <span
+                  className="partner-quality"
+                  style={{ backgroundColor: QUALITY_COLORS[partnerQuality] || '#9e9e9e' }}
+                  title={`Partner network: ${partnerQuality}`}
+                />
+              ) : (
+                <div className="loader">
+                  {!idle && <CircularProgress sx={{ color: '#8F47FF' }} aria-label="Searching" />}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+            <div className="video-wrapper">
+              <video ref={localVideo} autoPlay playsInline muted className="video local" data-testid="local-video" />
+              {cameraCount > 1 && (
+                <IconButton
+                  className="switch-camera"
+                  onClick={switchCamera}
+                  aria-label="Switch camera"
+                  data-testid="switch-camera"
+                >
+                  <CameraswitchIcon />
+                </IconButton>
+              )}
+            </div>
+          </div>
 
-      <p className="status" role="status" data-testid="status">
-        {statusText}
-        {inCall && sharedTags.length > 0 && ` · You both like: ${sharedTags.join(', ')}`}
-      </p>
+          <p className="status" role="status" data-testid="status">
+            {statusText}
+            {inCall && sharedTags.length > 0 && ` · You both like: ${sharedTags.join(', ')}`}
+          </p>
 
-      <div className="controls">
-        <Button
-          className="start-button"
-          variant="contained"
-          color={idle ? 'success' : 'error'}
-          onClick={idle ? start : stop}
-          data-testid="start-stop"
-        >
-          {idle ? 'Start' : 'Stop'}
-        </Button>
-        <Button
-          className="skip-button"
-          variant="contained"
-          disabled={!inCall}
-          onClick={() => leaveCall({ type: 'skip' })}
-          data-testid="skip"
-        >
-          Skip
-        </Button>
-        <IconButton
-          className="mute-button"
-          onClick={() => setMicOn((on) => !on)}
-          aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'}
-          aria-pressed={!micOn}
-          data-testid="toggle-mic"
-        >
-          {micOn ? <MicIcon className="icon" /> : <MicOffIcon className="icon" />}
-        </IconButton>
-        <IconButton
-          className="video-button"
-          onClick={() => setVideoOn((on) => !on)}
-          aria-label={videoOn ? 'Turn camera off' : 'Turn camera on'}
-          aria-pressed={!videoOn}
-          data-testid="toggle-video"
-        >
-          {videoOn ? <VideocamIcon className="icon" /> : <VideocamOffIcon className="icon" />}
-        </IconButton>
-        {inCall && (
-          <>
-            <Button variant="outlined" color="warning" onClick={() => setReportOpen(true)} data-testid="report">
-              Report
+          <div className="controls">
+            <IconButton
+              className="mute-button"
+              onClick={() => setMicOn((on) => !on)}
+              aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'}
+              aria-pressed={!micOn}
+              data-testid="toggle-mic"
+            >
+              {micOn ? <MicIcon className="icon" /> : <MicOffIcon className="icon" />}
+            </IconButton>
+            <IconButton
+              className="video-button"
+              onClick={() => setVideoOn((on) => !on)}
+              aria-label={videoOn ? 'Turn camera off' : 'Turn camera on'}
+              aria-pressed={!videoOn}
+              data-testid="toggle-video"
+            >
+              {videoOn ? <VideocamIcon className="icon" /> : <VideocamOffIcon className="icon" />}
+            </IconButton>
+            <IconButton
+              className="hang-up"
+              disabled={idle}
+              onClick={stop}
+              aria-label="Stop"
+              data-testid="hang-up"
+            >
+              <CallEndIcon />
+            </IconButton>
+            <Button
+              className="skip-button"
+              variant="contained"
+              disableElevation
+              disabled={!inCall}
+              onClick={() => leaveCall({ type: 'skip' })}
+              data-testid="skip"
+            >
+              Skip
             </Button>
-            <Button variant="outlined" color="error" onClick={block} data-testid="block">
-              Block
-            </Button>
-          </>
-        )}
-      </div>
+            {inCall && (
+              <>
+                <Button variant="outlined" color="warning" onClick={() => setReportOpen(true)} data-testid="report">
+                  Report
+                </Button>
+                <Button variant="outlined" color="error" onClick={block} data-testid="block">
+                  Block
+                </Button>
+              </>
+            )}
+          </div>
+        </section>
 
-      <TagInput onTagsChange={setTags} />
-      {!idle && <p className="hint">Tag changes apply the next time you press Start.</p>}
+        <aside className="chat-panel" aria-label="Text chat">
+          <h2 className="chat-partner" data-testid="partner-name">
+            {inCall ? partnerName : 'Chat'}
+          </h2>
+          <ul className="chat-messages" ref={chatListRef} aria-live="polite" data-testid="chat-messages">
+            {messages.length === 0 && (
+              <li className="chat-empty">{inCall ? 'Say hello.' : 'Messages appear here during a call.'}</li>
+            )}
+            {messages.map((m) => (
+              <li key={m.id} className={`chat-message ${m.from}`} data-testid="chat-message">
+                <span className="visually-hidden">{m.from === 'me' ? 'You: ' : `${partnerName}: `}</span>
+                {m.text}
+              </li>
+            ))}
+          </ul>
+          <form className="chat-form" onSubmit={sendChat}>
+            <input
+              type="text"
+              value={chatText}
+              onChange={(e) => setChatText(e.target.value)}
+              maxLength={MAX_CHAT_LENGTH}
+              disabled={!inCall}
+              placeholder="Type a message"
+              aria-label="Type a message"
+              className="chat-input"
+              data-testid="chat-input"
+            />
+            <IconButton
+              type="submit"
+              disabled={!inCall || !chatText.trim()}
+              aria-label="Send message"
+              className="chat-send"
+              data-testid="chat-send"
+            >
+              <SendIcon />
+            </IconButton>
+          </form>
+        </aside>
+      </main>
 
       <footer className="footer">
         <Link to="/terms" data-testid="footer-terms">Terms</Link>

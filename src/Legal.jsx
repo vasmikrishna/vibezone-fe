@@ -31,6 +31,12 @@ export function Terms() {
         <li>illegal content or activity</li>
         <li>spam or advertising</li>
       </ul>
+      <h2>Text chat</h2>
+      <p>
+        During a call you can send text messages to the other person. Messages are filtered and
+        some offensive words are replaced with asterisks. The prohibited content rules apply to
+        text and display names too.
+      </p>
       <h2>Reporting and blocking</h2>
       <p>
         During a call you can report or block the other person. Either action ends the call and
@@ -69,12 +75,20 @@ export function Privacy() {
       </p>
       <h2>What we store</h2>
       <ul>
-        <li>a random device id created in your browser (no name, email or account)</li>
+        <li>a random device id created in your browser (no email or account)</li>
+        <li>the display name you enter, only for the duration of the session; it is shown to your partner</li>
         <li>session timestamps</li>
         <li>the tags you enter, only for the duration of the session</li>
-        <li>reports you make or receive</li>
+        <li>reports you make or receive, including the last text chat lines of that call</li>
         <li>blocks you make</li>
       </ul>
+      <h2>Text chat</h2>
+      <p>
+        Text messages pass through our server, which filters them and forwards them to your
+        partner. The last few lines of a call are kept in memory only while the call lasts and
+        are deleted when it ends. Chat lines are stored only if a report is filed for that call,
+        so moderators can review it.
+      </p>
       <p>
         We use this only to match people, enforce the rules and apply bans. We do not use
         analytics or advertising trackers.

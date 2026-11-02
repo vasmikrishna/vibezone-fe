@@ -1,8 +1,8 @@
 const StatusWithNumber = ({ number }) => {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} aria-label={`${number} people online`}>
-      <span style={{ width: '12px', height: '12px', backgroundColor: '#32CD32', borderRadius: '50%' }} />
-      <span style={{ color: '#007bff', fontWeight: 'bold', fontSize: '18px' }}>{number}</span>
+    <div className="active-users" aria-label={`${number} people online`} data-testid="active-users">
+      <span style={{ width: '10px', height: '10px', backgroundColor: '#32CD32', borderRadius: '50%' }} />
+      <span style={{ fontWeight: 600 }}>{number.toLocaleString()}</span>
     </div>
   );
 };
