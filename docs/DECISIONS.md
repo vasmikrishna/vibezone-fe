@@ -11,3 +11,7 @@ Firebase was only used for analytics and push notifications. Analytics conflicte
 ## 2026-11-02 — ICE servers come from the server
 
 The client uses only the `iceServers` sent in `ready`, so TURN credentials are never shipped in the bundle and can be rotated server-side.
+
+## 2026-11-02 — Package the web app with Capacitor
+
+Stores need a native app, and the product is one WebRTC page that already works in a browser. Capacitor wraps the existing Vite build in a system webview with no app-logic changes (React Native or Flutter would mean a rewrite). Web assets ship inside the app (no `server.url`), so the bundle is reviewed with the app and works from `capacitor://localhost` (iOS) and `https://localhost` (Android). The config is `capacitor.config.json` to avoid adding TypeScript just for it. iOS uses Swift Package Manager (the CLI default). Icons are generated one-off with `@capacitor/assets` from `assets/`, not added as a dependency.

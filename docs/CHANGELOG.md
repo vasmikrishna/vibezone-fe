@@ -10,4 +10,5 @@
 - Tags are trimmed, lowercased, limited to 10 × 30 chars; shared tags shown on match.
 - Mobile-first layout with safe-area insets and status text.
 - Removed Firebase, react-ga, Google Tag Manager, early-access form, IP extraction and debug code.
+- Android and iOS apps (Capacitor, `in.vibezone.app`): `pnpm mobile:sync`, camera/mic permissions, icons and splash from the logo (`assets/`), native-aware permission-denied message. See `docs/STORE_RELEASE.md`.
 - Server URL from `VITE_SERVER_URL`, contact from `VITE_CONTACT_EMAIL` (see `.env.example`).

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -415,7 +416,7 @@ export default function VideoPage() {
         <h2>Camera and microphone needed</h2>
         <p>
           {mediaError === 'denied'
-            ? 'Access to your camera or microphone was blocked. Allow it in your browser’s site settings, then try again.'
+            ? `Access to your camera or microphone was blocked. Allow it in ${Capacitor.isNativePlatform() ? 'your device Settings, under Vibezone' : 'your browser’s site settings'}, then try again.`
             : mediaError === 'nodevice'
               ? 'No camera or microphone was found. Connect one, then try again.'
               : 'Your camera or microphone could not be started. Close other apps using it, then try again.'}
