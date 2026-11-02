@@ -1,1042 +1,586 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Snackbar from '@mui/material/Snackbar';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
-import CircularProgress from "@mui/material/CircularProgress";
-import { analytics } from "./firebase";
-import { logEvent } from "firebase/analytics";
-import { messaging } from "./firebase";
-import { getToken, onMessage } from "firebase/messaging";
 import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
-import Onboarding from "./utils/Onboarding"; // Import the Onboarding component
+import Onboarding from './utils/Onboarding';
+import StatusWithNumber from './components/activeUsers';
+import TagInput from './components/Tags/taginput';
+import logo from './assets/vibezone-logo.svg';
 import './video.css';
 
-import logo from './assets/vibezone-logo.svg';
-import StatusWithNumber from './components/activeUsers';
-import InstagramCTA from './page/insta';
-import FreeAccessForm from './components/earlybardAcess';
-import TagInput from './components/Tags/taginput';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL;
+const MAX_RETRY_MS = 30000;
+const REPLACED_CLOSE_CODE = 4000;
 
+const REPORT_REASONS = [
+  ['nudity', 'Nudity or sexual content'],
+  ['harassment', 'Harassment or hate'],
+  ['underage', 'Appears to be under 18'],
+  ['spam', 'Spam or advertising'],
+  ['other', 'Something else'],
+];
 
+const QUALITY_COLORS = { High: '#4caf50', Medium: '#ff9800', Low: '#f44336' };
 
-// const configuration = {
-//   iceServers: [
-//     { urls: 'stun:43.204.141.222:3478' },
-//     {
-//       urls: 'turn:43.204.141.222:3478',
-//       username: 'vamsi',
-//       credential: '9100684109',
-//     },
-//   ],
-// };
+function getDeviceId() {
+  let id = localStorage.getItem('vibezoneDeviceId');
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem('vibezoneDeviceId', id);
+  }
+  return id;
+}
 
-const configuration = {
-  iceServers: [
-    {
-      // STUN-only on port 3478
-      urls: 'stun:43.204.141.222:3478'
-    },
-    {
-      // TURN over multiple transports (UDP, TCP, and TLS)
-      urls: [
-        'turn:43.204.141.222:3478?transport=udp',
-        'turn:43.204.141.222:3478?transport=tcp',
-        'turns:43.204.141.222:443?transport=tcp'
-        // or 'turns:43.204.141.222:5349?transport=tcp' if you're using 5349
-      ],
-      username: 'vamsi',
-      credential: '9100684109',
-    },
-  ],
-
-  // Let WebRTC try direct (UDP) first, then use TURN if needed.
-  // Set to 'relay' if you want to force everything via TURN.
-  iceTransportPolicy: 'all', 
-
-  // Increase ICE candidate gathering pool if you want more thorough candidate discovery.
-  iceCandidatePoolSize: 10,
-};
-
-
+function measureQuality() {
+  const connection = navigator.connection;
+  if (!connection) return 'Unknown';
+  const { effectiveType, downlink } = connection;
+  if (downlink >= 5 || effectiveType === '4g') return 'High';
+  if (downlink >= 1) return 'Medium';
+  return 'Low';
+}
 
 export default function VideoPage() {
   const wsRef = useRef(null);
   const pcRef = useRef(null);
-
-  const [serverUrl, setServerUrl] = useState('https://vibezone.in/');
-  const [permissionsGranted, setPermissionsGranted] = useState(false);
-  const [networkSpeed, setNetworkSpeed] = useState(null);
-  const [networkQuality, setNetworkQuality] = useState('Unknown');
-  const [partnerId, setPartnerId] = useState(null);
-  const [role, setRole] = useState(null); // 'caller' or 'callee'
-  const [localStream, setLocalStream] = useState(null);
-  const [socketId, setSocketId] = useState('');
-  const [micOn, setMicOn] = useState(true); // Track mic state
-  const [videoOn, setVideoOn] = useState(true); // Track video state
-  const [keyword, setKeyword] = useState('');
-  const [isPaused, setisPaused] = useState(true);
-  const [partnerNetworkQuality, setPartnerNetworkQuality] = useState('Unknown');  
-
+  const streamRef = useRef(null);
+  const iceServersRef = useRef([]);
+  const pendingCandidatesRef = useRef([]);
+  const stoppedRef = useRef(true);
+  const retryTimerRef = useRef(null);
+  const retryDelayRef = useRef(1000);
+  const joinTagsRef = useRef([]);
+  const camerasRef = useRef([]);
+  const cameraIndexRef = useRef(0);
+  const qualityRef = useRef('Unknown');
   const localVideo = useRef(null);
   const remoteVideo = useRef(null);
 
-  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
-  const [availableCameras, setAvailableCameras] = useState([]);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [previousNetworkQuality, setPreviousNetworkQuality] = useState(null);
-
-  const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [hasSubmitted, setHasSubmitted] = useState(false); // Track submission state
-  const [cameraMode, setCameraMode] = useState(true);
-  const [ipAddresses, setIpAddresses] = useState([]);
-  const partnerIdRef = useRef();
-  const networkQualityRef = useRef();
-  const previousNetworkQualityRef = useRef();
-
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  // idle | connecting | searching | connected | reconnecting | banned
+  const [status, setStatus] = useState('idle');
+  const [localStream, setLocalStream] = useState(null);
+  const [mediaError, setMediaError] = useState(null);
+  const [micOn, setMicOn] = useState(true);
+  const [videoOn, setVideoOn] = useState(true);
+  const [cameraCount, setCameraCount] = useState(0);
   const [tags, setTags] = useState([]);
+  const [sharedTags, setSharedTags] = useState([]);
+  const [activeUsers, setActiveUsers] = useState(0);
+  const [networkQuality, setNetworkQuality] = useState('Unknown');
+  const [partnerQuality, setPartnerQuality] = useState('Unknown');
+  const [retrySeconds, setRetrySeconds] = useState(0);
+  const [bannedUntil, setBannedUntil] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [notice, setNotice] = useState('');
 
-  const handleTagsChange = (newTags) => {
-    setTags(newTags);
-    console.log("Current Tags:", newTags);
-    // Add logic to use these tags in your application (e.g., matchmaking)
+  const send = (message) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(message));
   };
 
+  // Attach the local stream after render and keep mic/camera state across calls and camera switches.
   useEffect(() => {
-    const hasCompletedOnboarding = localStorage.getItem("hasCompletedOnboarding");
-    if (!hasCompletedOnboarding) {
-      setShowOnboarding(true);
-    }
-  }, []);
-
-
-  useEffect(() => {
-    partnerIdRef.current = partnerId;
-    console.log('messgae sending form the partnerId')
-    emitNetworkQuality();
-  }, [partnerId]);
+    if (localVideo.current) localVideo.current.srcObject = localStream;
+    localStream?.getAudioTracks().forEach((t) => { t.enabled = micOn; });
+    localStream?.getVideoTracks().forEach((t) => { t.enabled = videoOn; });
+  }, [localStream, micOn, videoOn]);
 
   useEffect(() => {
-    networkQualityRef.current = networkQuality;    
-  }, [networkQuality]);
-
-  useEffect(() => {
-    previousNetworkQualityRef.current = previousNetworkQuality;
-  }, [previousNetworkQuality]);
-
-  const extractIpFromCandidate = (candidate) => {
-    const ipRegex = /(\d{1,3}\.){3}\d{1,3}/;
-    const match = candidate.match(ipRegex);
-    return match ? match[0] : null;
-  };
-
-
-
-
-  const emitNetworkQuality = (quality = networkQualityRef.current) => {
-    if (!partnerIdRef.current) {
-      console.error('partnerId is null or undefined', networkQualityRef.current);
-      return;
-    }
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          type: 'networkQualityUpdate',
-          quality: quality,
-          to: partnerIdRef.current,
-        })
-      );
-    }
-  };
-
-  const checkNetworkSpeed = () => {
-    if ('connection' in navigator) {
-      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      const { effectiveType, downlink } = connection;
-  
-      // Determine network quality based on downlink and effectiveType
-      let quality = 'Unknown';
-      if (downlink >= 5 || effectiveType === '4g') {
-        quality = 'High';
-      } else if (downlink >= 1 && downlink < 5) {
-        quality = 'Medium';
-      } else if (downlink < 1 || effectiveType === '2g' || effectiveType === 'slow-2g') {
-        quality = 'Low';
+    const check = () => {
+      const quality = measureQuality();
+      if (quality !== qualityRef.current) {
+        qualityRef.current = quality;
+        setNetworkQuality(quality);
+        if (pcRef.current) send({ type: 'networkQualityUpdate', quality });
       }
-  
-     
-
-      if ( previousNetworkQualityRef.current !== quality) {
-        console.log('Network quality changed from', previousNetworkQualityRef.current, 'to', quality);
-        emitNetworkQuality(quality);
-      }
-
-      setNetworkQuality(quality);
-      setNetworkSpeed({ effectiveType, downlink });
-
-    // Update the previous quality
-      setPreviousNetworkQuality(quality);
-      console.log('Network Quality:', quality, partnerId);
-  
-      // Turn off video if quality is low
-      // if (quality === 'Low') {
-      //   setVideoOn(false);
-      // }
-    } else {
-      setNetworkQuality('Unsupported');
-    }
-  };
-
-  const handleViolenceDetected = (transcript) => {
-    console.warn('Violence detected in speech:', transcript);
-    // Add logic to handle violence detection (e.g., block the user)
-  };
-  
-  useEffect(() => {
-    checkNetworkSpeed();
-  
-    // Update network speed every 10 seconds
-    const interval = setInterval(checkNetworkSpeed, 10000);
+    };
+    check();
+    const interval = setInterval(check, 10000);
     return () => clearInterval(interval);
   }, []);
-  
 
-  useEffect(() => {
-    const submittedStatus = localStorage.getItem('freeAccessSubmitted');
-    console.log('submittedStatus:', submittedStatus);
-    if (submittedStatus === 'true') {
-      setHasSubmitted(true);
-    }
-  }, []);
-
-  const handlePopupOpen = () => {
-    if (!hasSubmitted) {
-      setIsPopupOpen(true);
-    }
+  const closePeer = () => {
+    pcRef.current?.close();
+    pcRef.current = null;
+    pendingCandidatesRef.current = [];
+    if (remoteVideo.current) remoteVideo.current.srcObject = null;
+    setSharedTags([]);
+    setPartnerQuality('Unknown');
   };
 
-  const handlePopupClose = () => {
-    setIsPopupOpen(false);
+  const leaveCall = (message) => {
+    send(message);
+    closePeer();
+    setStatus('searching');
   };
 
-  const handleFormSubmitFreeAccess = () => {
-    console.log('Form submitted!');
-    setHasSubmitted(true); // Mark as submitted
-    setIsPopupOpen(false); // Close the popup
-    localStorage.setItem('freeAccessSubmitted', 'true'); // Persist submission state
-  };
-
-  const checkPermissions = async () => {
-    try {
-      const cameraPermission = await navigator.permissions.query({ name: 'camera' });
-      const microphonePermission = await navigator.permissions.query({ name: 'microphone' });
-  
-      if (cameraPermission.state === 'granted' && microphonePermission.state === 'granted') {
-        console.log('Permissions already granted');
-        return true;
-      } else if (cameraPermission.state === 'denied' || microphonePermission.state === 'denied') {
-        console.error('Permissions denied. User needs to enable them manually.');
-        return false;
-      } else {
-        console.log('Permissions need to be requested');
-        return false;
-      }
-    } catch (err) {
-      console.error('Error checking permissions:', err);
-      return false;
-    }
-  };
-  
-
-  const requestPermissions = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      console.log('Permissions granted');
-      return stream;
-    } catch (err) {
-      console.error('Error requesting permissions:', err);
-      return null;
-    }
-  };
-  
-  const initializePermissions = async () => {
-    const granted = await checkPermissions();
-    if (!granted) {
-      const stream = await requestPermissions();
-      if (stream) {
-        setPermissionsGranted(true); // Permissions granted
-        setLocalStream(stream);
-        if (localVideo.current) {
-          localVideo.current.srcObject = stream;
-        }
-      } else {
-        setPermissionsGranted(false); // Permissions denied
-      }
-    } else {
-      setPermissionsGranted(true); // Permissions already granted
-    }
-  };
-
-
-  const [activeUsers, setActiveUsers] = useState(1);
-
-  useEffect(() => {
-    const requestPermission = async () => {
+  const flushCandidates = async (pc) => {
+    const queued = pendingCandidatesRef.current;
+    pendingCandidatesRef.current = [];
+    for (const candidate of queued) {
       try {
-        const permission = await Notification.requestPermission();
-        if (permission === "granted") {
-          console.log("Notification permission granted.");
-          const token = await getToken(messaging, {
-            vapidKey: "BLBpommLIjIUxyevEwGpcw2AsngGQluz10W6CNDBlZyeEMM7K5JSrxoNlJv1YqJLiM9ElxOyNth62wIlyIuTr30", // Replace with your VAPID key
-          });
-          if (token) {
-            console.log("FCM Token:", token);
-            // Send this token to your backend to send push notifications
-          } else {
-            console.log("No FCM token received.");
-          }
-        } else {
-          console.log("Notification permission denied.");
-        }
-      } catch (error) {
-        console.error("Error requesting notification permission:", error);
+        await pc.addIceCandidate(candidate);
+      } catch {
+        // A stale candidate from a previous negotiation; safe to drop.
       }
-    };
+    }
+  };
 
-    requestPermission();
-    initializePermissions();
-  }, []);
-
-    // Function to initialize the WebSocket connection
-    const initializeWebSocket = () => {
-      wsRef.current = new WebSocket(serverUrl);
-      // wsRef.current = new WebSocket('http://localhost:3001/');
-  
-      wsRef.current.onopen = () => {
-        console.log('Connected to signaling server');
-      };
-  
-      wsRef.current.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        console.log('WS message: =>', data);
-  
-        switch (data.type) {
-          case 'connected':
-            setSocketId(data.id);
-            break;
-          case 'activeUsers':
-            setActiveUsers(data.value);
-            break;
-          case 'matched':
-            setPartnerId(data.partnerId);
-            setRole(data.role);
-            initPeerConnection(data.partnerId);
-            if (data.role === 'caller') {
-              createOffer(data.partnerId);
-            }
-            break;
-          case 'offer':
-            handleOffer(data.offer, data.from);
-            break;
-          case 'answer':
-            handleAnswer(data.answer);
-            break;
-          case 'candidate':
-            handleCandidate(data.candidate);
-            break;
-          case 'hangup':
-            endCall();
-            break;
-          case 'networkQualityUpdate':
-              console.log('Partner network quality:', data.quality);
-              setPartnerNetworkQuality(data.quality); // Set partner's network quality
-              break;
-          default:
-            console.warn('Unknown message type:', data.type);
-        }
-      };
-  
-      wsRef.current.onerror = (err) => {
-        console.error('WebSocket error:', err);
-      };
-  
-      wsRef.current.onclose = () => {
-        console.log('Disconnected from signaling server');
-      };
-    };
-
-  const getStream = async (deviceId = null) => {
+  const limitBitrate = async (pc) => {
+    const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
+    if (!sender) return;
+    const params = sender.getParameters();
+    if (!params.encodings?.length) return;
+    params.encodings[0].maxBitrate = 300000;
     try {
-      // Detect device type
-      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-      const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
-      const isAndroid = /Android/i.test(userAgent);
-  
-      console.log(`Device detected: ${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Desktop/Other'}`);
-  
-      // Fetch available video input devices
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
-  
-      if (videoDevices.length === 0) {
-        console.error('No video input devices found.');
-        return null;
-      }
-  
-      // If no deviceId is provided, use the first available camera
-      const selectedDeviceId = deviceId || videoDevices[0].deviceId;
-  
-      // Cross-platform constraints
-      const constraints = {
-        video: videoOn && isIOS
-          ? { facingMode:'user' } // iOS prefers facingMode
-          : { deviceId: { exact: selectedDeviceId } }, // Default for other platforms
-        audio: micOn,
-      };
-  
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log(`Using camera: ${selectedDeviceId}`);
-      return stream;
-    } catch (err) {
-      // Handle errors
-      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        console.error('No camera or microphone found.');
-      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        console.error('Permission denied for accessing media devices.');
-      } else if (err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError') {
-        console.error('Constraints cannot be satisfied by available devices.');
-      } else {
-        console.error('Error accessing media devices:', err);
-      }
-      return null;
-    }
-  };
-  
-  const renegotiate = async () => {
-    const pc = pcRef.current;
-    if (!pc) return;
-  
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-  
-      // Send the new offer to the partner
-      wsRef.current.send(
-        JSON.stringify({
-          type: "offer",
-          offer: pc.localDescription,
-          to: partnerId,
-        })
-      );
-      console.log("Renegotiation offer sent.");
-    } catch (err) {
-      console.error("Error during renegotiation:", err);
+      await sender.setParameters(params);
+    } catch {
+      // Not supported by this browser; the default bitrate is used.
     }
   };
 
-
-  const switchCamera = async () => {
-    if (availableCameras.length > 0) {
-      const nextCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-      console.log('Next camera index:', nextCameraIndex);
-      console.log('Available cameras:', availableCameras);
-      const nextCamera = availableCameras[nextCameraIndex];
-  
-      try {
-     
-  
-        // Use facingMode for mobile devices
-        const newStream = await getStream(nextCamera.deviceId);
-
-        setCameraMode(!cameraMode);
-        setCurrentCameraIndex(nextCameraIndex);
-        console.log(`Switched to camera: ${nextCamera.label}`);
-
-        if(!newStream?.active){
-          console.log('No video tracks found');
-          return;
-        }
-
-        // Stop the old tracks to release resources
-        localStream?.getTracks().forEach((track) => track.stop());
-  
-        // Replace the video track in the WebRTC PeerConnection
-        const videoTrack = newStream.getVideoTracks()[0];
-        const sender = pcRef.current
-          ?.getSenders()
-          ?.find((sender) => sender.track.kind === "video");
-  
-        if (sender) {
-          await sender.replaceTrack(videoTrack); // Replace track without renegotiation
-        } else {
-          console.warn("No sender found for video track.");
-        }
-  
-        // Update the local video element and state
-        setLocalStream(newStream);
-        if (localVideo.current) {
-          localVideo.current.srcObject = newStream;
-        }
-  
-        setCurrentCameraIndex(nextCameraIndex);
-        console.log(`Switched to camera: ${nextCamera.label}`);
-        await renegotiate();
-      } catch (err) {
-        setCurrentCameraIndex((currentCameraIndex+1) % availableCameras.length);
-        console.error("Error switching camera:", err);
-      }
-    } else {
-      console.warn("No additional cameras available to switch.");
-    }
-  };
-  
-
-  useEffect(() => {
-    const getCameras = async () => {
-      try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        setAvailableCameras(videoDevices);
-  
-        if (videoDevices.length > 0) {
-          const stream = await getStream(videoDevices[0].deviceId);
-          setLocalStream(stream);
-          if (localVideo.current) {
-            localVideo.current.srcObject = stream;
-          }
-        }
-      } catch (err) {
-        console.error('Error accessing cameras:', err);
-      }
-    };
-  
-    getCameras();
-  }, []);
-   
-
-  useEffect(() => {
-    // Handle incoming messages while the app is in the foreground
-    onMessage(messaging, (payload) => {
-      console.log("Message received in foreground: ", payload);
-      // Optionally show a notification
-      new Notification(payload.notification.title, {
-        body: payload.notification.body,
-        icon: payload.notification.icon,
-      });
-    });
-  }, []);
-
-  const toggleMic = () => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((track) => {
-        track.enabled = !micOn;
-      });
-      setMicOn(!micOn);
-    }
-  };
-
-  const toggleVideo = () => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach((track) => {
-        track.enabled = !videoOn;
-      });
-      setVideoOn(!videoOn);
-    }
-  };
-
-
-  // 2. Get local media once on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const stream = await getStream();
-        setLocalStream(stream);
-        setIsStreaming(true);
-        if (localVideo.current) {
-          localVideo.current.srcObject = stream;
-        }
-      } catch (err) {
-        console.error('Error accessing media devices:', err);
-      }
-    })();
-  }, []);
-  
-
-  /** Initialize a new RTCPeerConnection */
-  function initPeerConnection(remoteId) {
-    // const pc = new RTCPeerConnection(configuration);
-    if (!localStream) {
-      console.error('Local stream not initialized yet.');
-      return;
-    }
-  
-    const pc = new RTCPeerConnection(configuration, { iceCandidatePoolSize: 10,  });
-
-    pc.onicegatheringstatechange = () => {
-      console.log('ICE gathering state:', pc.iceGatheringState);
-    };
-
-
-    console.log('Created RTCPeerConnection:');
-
+  const createPeer = () => {
+    closePeer();
+    const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
     pcRef.current = pc;
-
-    // Add local tracks
-    if (localStream) {
-      localStream.getTracks().forEach((track) => {
-        pc.addTrack(track, localStream);
-      });
-    }
-
-    pc.ontrack = (event) => {
-      // Grab the first stream from the event
-      const [incomingStream] = event.streams;
-    
-      console.log("Received remote stream:", incomingStream);
-    
-      // Log each track’s kind and state
-      incomingStream.getTracks().forEach((track) => {
-        console.log(
-          `Track kind: ${track.kind}, enabled: ${track.enabled}, readyState: ${track.readyState}`
-        );
-      });
-    
-      // Check for at least one video track
-      const videoTracks = incomingStream.getVideoTracks();
-      if (videoTracks.length === 0) {
-        console.log("No remote video track received!");
-      } else {
-        console.log("We do have a remote video track.");
-      }
-    
-      // Check for at least one audio track
-      const audioTracks = incomingStream.getAudioTracks();
-      if (audioTracks.length === 0) {
-        console.log("No remote audio track received!");
-      } else {
-        console.log("We do have a remote audio track.");
-      }
-    
-      // Attach the incoming stream to the remote <video> element
-      if (remoteVideo.current) {
-        // Reset in case some browsers hold onto old streams
-        remoteVideo.current.srcObject = null;
-        remoteVideo.current.srcObject = incomingStream;
-        console.log("Remote video attached successfully.");
-      } else {
-        console.error("Remote video element not found.");
-      }
-    };    
-    
-    
-
-    // onicecandidate => send to partner
-    pc.onicecandidate = (event) => {
-      console.log('ICE candidate:', event.candidate);
-      // Extract IP address and store it
-      const ipAddress = extractIpFromCandidate(event.candidate.candidate);
-      if (ipAddress) {
-        console.log("Extracted IP Address:", ipAddress);
-        setIpAddresses((prev) => Array.from(new Set([...prev, ipAddress]))); // Avoid duplicates
-      }
-
-      if (event.candidate) {
-        wsRef.current.send(JSON.stringify({
-          type: 'candidate',
-          candidate: event.candidate,
-          to: remoteId
-        }));
-      }
+    const stream = streamRef.current;
+    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    pc.ontrack = ({ streams }) => {
+      if (remoteVideo.current && streams[0]) remoteVideo.current.srcObject = streams[0];
     };
+    pc.onicecandidate = ({ candidate }) => {
+      if (candidate) send({ type: 'candidate', candidate });
+    };
+    pc.onconnectionstatechange = () => {
+      if (pcRef.current !== pc) return;
+      // 'disconnected' often recovers by itself; a peer that really left arrives as partnerLeft.
+      if (pc.connectionState === 'failed') leaveCall({ type: 'skip' });
+    };
+    limitBitrate(pc);
+    return pc;
+  };
 
-    const sender = pc.getSenders().find((s) => s.track.kind === "video");
-    if (sender) {
-      const params = sender.getParameters();
-      params.encodings[0] = {
-        maxBitrate: 300000, // Lower bitrate for weak networks
-      };
-      sender.setParameters(params);
+  const makeOffer = async (pc) => {
+    try {
+      await pc.setLocalDescription(await pc.createOffer());
+      send({ type: 'offer', offer: pc.localDescription });
+    } catch {
+      if (pcRef.current === pc) leaveCall({ type: 'skip' });
     }
+  };
 
-
-    pc.getStats().then((stats) => {
-      stats.forEach((report) => {
-        if (report.type === "candidate-pair" && report.currentRoundTripTime) {
-          console.log("Round Trip Time:", report.currentRoundTripTime);
-        }
-        if (report.type === "inbound-rtp" && report.kind === "video") {
-          console.log("Video Packet Loss:", report.packetsLost);
-        }
-      });
-    });
-    
-  }
-
-  /** Caller: create offer automatically if I'm "caller" */
-  async function createOffer(id) {
+  const handleOffer = async (offer) => {
     const pc = pcRef.current;
     if (!pc) return;
     try {
-      const offer = await pc.createOffer();
-      console.log('Created offer:', offer);
-      await pc.setLocalDescription(offer);
-      // Send offer to partner
-      wsRef.current.send(JSON.stringify({
-        type: 'offer',
-        offer: pc.localDescription,
-        to: id
-      }));
-      console.log('Sent offer to:', id);
-    } catch (err) {
-      console.error('createOffer error:', err);
+      await pc.setRemoteDescription(offer);
+      await flushCandidates(pc);
+      await pc.setLocalDescription(await pc.createAnswer());
+      send({ type: 'answer', answer: pc.localDescription });
+    } catch {
+      if (pcRef.current === pc) leaveCall({ type: 'skip' });
     }
-  }
+  };
 
-  /** Callee: handle incoming offer automatically */
-  async function handleOffer(offer, fromId) {
-    setPartnerId(fromId); // in case we didn't have it yet
-
-    const pc = pcRef.current;
-    if (!pc) {
-      initPeerConnection(fromId);
-    }
-    // setRemoteDescription
-    await pcRef.current.setRemoteDescription(offer);
-
-    // createAnswer
-    const answer = await pcRef.current.createAnswer();
-    await pcRef.current.setLocalDescription(answer);
-
-    // send 'answer'
-    wsRef.current.send(JSON.stringify({
-      type: 'answer',
-      answer: pcRef.current.localDescription,
-      to: fromId
-    }));
-  }
-
-  /** Caller: handle incoming answer */
-  async function handleAnswer(answer) {
-    console.log('Received answer:', answer);
+  const handleAnswer = async (answer) => {
     const pc = pcRef.current;
     if (!pc) return;
-    await pc.setRemoteDescription(answer);
-    console.log('Remote description set');
-  }
-
-  /** Both: handle ICE candidate */
-  // async function handleCandidate(candidate) {
-  //   const pc = pcRef.current;
-  //   if (!pc) return;
-  //   try {
-  //     await pc.addIceCandidate(candidate);
-  //   } catch (err) {
-  //     console.error('Error adding candidate', err);
-  //   }
-  // }
+    try {
+      await pc.setRemoteDescription(answer);
+      await flushCandidates(pc);
+    } catch {
+      if (pcRef.current === pc) leaveCall({ type: 'skip' });
+    }
+  };
 
   const handleCandidate = async (candidate) => {
     const pc = pcRef.current;
-    if (!pc) return;
+    if (!pc || !candidate) return;
+    if (!pc.remoteDescription) {
+      pendingCandidatesRef.current.push(candidate);
+      return;
+    }
     try {
       await pc.addIceCandidate(candidate);
+    } catch {
+      // A stale candidate from a previous negotiation; safe to drop.
+    }
+  };
 
-      // Extract IP address from candidate
-      const ipAddress = extractIpFromCandidate(candidate.candidate);
-      if (ipAddress) {
-        console.log("Extracted IP Address:", ipAddress);
-        setIpAddresses((prev) => Array.from(new Set([...prev, ipAddress]))); // Avoid duplicates
+  const handleMessage = (data) => {
+    switch (data.type) {
+      case 'ready':
+        iceServersRef.current = Array.isArray(data.iceServers) ? data.iceServers : [];
+        retryDelayRef.current = 1000;
+        setStatus('searching');
+        break;
+      case 'banned':
+        stoppedRef.current = true;
+        setBannedUntil(data.until);
+        setStatus('banned');
+        closePeer();
+        wsRef.current?.close();
+        break;
+      case 'activeUsers':
+        setActiveUsers(data.value);
+        break;
+      case 'matched': {
+        const pc = createPeer();
+        setSharedTags(Array.isArray(data.sharedTags) ? data.sharedTags : []);
+        setStatus('connected');
+        send({ type: 'networkQualityUpdate', quality: qualityRef.current });
+        if (data.role === 'caller') makeOffer(pc);
+        break;
       }
-    } catch (err) {
-      console.error("Error adding candidate", err);
+      case 'offer':
+        handleOffer(data.offer);
+        break;
+      case 'answer':
+        handleAnswer(data.answer);
+        break;
+      case 'candidate':
+        handleCandidate(data.candidate);
+        break;
+      case 'networkQualityUpdate':
+        setPartnerQuality(data.quality);
+        break;
+      case 'partnerLeft':
+        closePeer();
+        setStatus('searching');
+        break;
+      case 'error':
+        setNotice(`Server error: ${data.message}`);
+        break;
+      default:
+        break;
     }
   };
 
-  /** End the call and reset */
-  function endCall() {
-    if (pcRef.current) {
-      pcRef.current.close();
-      pcRef.current = null;
+  const connect = () => {
+    if (!SERVER_URL) {
+      stoppedRef.current = true;
+      setStatus('idle');
+      setNotice('Server URL is not configured.');
+      return;
     }
-    if (remoteVideo.current) {
-      remoteVideo.current.srcObject = null;
+    let ws;
+    try {
+      ws = new WebSocket(SERVER_URL);
+    } catch {
+      stoppedRef.current = true;
+      setStatus('idle');
+      setNotice('Server URL is invalid.');
+      return;
     }
-    setPartnerId(null);
-    setRole(null);
-  }
-
-  /** User presses "Skip" => send skip, server re-queues us */
-  function skip() {
-    if (window.dataLayer) {
-      window.dataLayer.push({
-        event: 'skip', // The event name that matches your GTM trigger
-      });
-    }
-    wsRef.current.send(JSON.stringify({ type: 'skip' }));
-    endCall();
-  }
-
-  const handlePause = () => {
-    endCall();
-    wsRef.current?.close();
-    wsRef.current = null;
-    setisPaused(true);
-  };
-
-  const handleResume = async () => {
-    setisPaused(false);
-    initializeWebSocket();
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(device => device.kind === 'videoinput');
-    setAvailableCameras(videoDevices);
-
-    if (videoDevices.length > 0) {
-      const stream = await getStream(videoDevices[0].deviceId);
-      setLocalStream(stream);
-      if (localVideo.current) {
-        localVideo.current.srcObject = stream;
-      }
-    }
-  };
-
-  const handleGetIps = () => {
-    console.log('IPs:', ipAddresses);
-  };
-
-  useEffect(() => {
-    if (!isPaused) {
-      initializeWebSocket();
-    }
-
-    return () => {
-      wsRef.current?.close();
+    wsRef.current = ws;
+    setStatus('connecting');
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'join', deviceId: getDeviceId(), tags: joinTagsRef.current }));
     };
-  }, [isPaused]);
+    ws.onmessage = (event) => {
+      let data;
+      try {
+        data = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (wsRef.current === ws && data && typeof data.type === 'string') handleMessage(data);
+    };
+    ws.onclose = ({ code }) => {
+      if (wsRef.current !== ws) return;
+      wsRef.current = null;
+      closePeer();
+      if (code === REPLACED_CLOSE_CODE) {
+        stopRef.current();
+        setNotice('Vibezone was opened in another tab or window.');
+        return;
+      }
+      if (stoppedRef.current) return;
+      const delay = retryDelayRef.current;
+      retryDelayRef.current = Math.min(delay * 2, MAX_RETRY_MS);
+      setRetrySeconds(delay / 1000);
+      setStatus('reconnecting');
+      retryTimerRef.current = setTimeout(connect, delay);
+    };
+  };
 
+  const listCameras = async (stream) => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      camerasRef.current = devices.filter((d) => d.kind === 'videoinput' && d.deviceId);
+    } catch {
+      camerasRef.current = [];
+    }
+    const currentId = stream.getVideoTracks()[0]?.getSettings().deviceId;
+    cameraIndexRef.current = Math.max(0, camerasRef.current.findIndex((c) => c.deviceId === currentId));
+    setCameraCount(camerasRef.current.length);
+  };
 
-  if (!permissionsGranted) {
+  const getMedia = async () => {
+    if (streamRef.current) return streamRef.current;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      streamRef.current = stream;
+      setLocalStream(stream);
+      listCameras(stream);
+      return stream;
+    } catch (err) {
+      const denied = err?.name === 'NotAllowedError' || err?.name === 'SecurityError';
+      const missing = err?.name === 'NotFoundError' || err?.name === 'OverconstrainedError';
+      setMediaError(denied ? 'denied' : missing ? 'nodevice' : 'other');
+      return null;
+    }
+  };
+
+  const start = async () => {
+    setMediaError(null);
+    setBannedUntil(null);
+    if (!(await getMedia())) return;
+    stoppedRef.current = false;
+    joinTagsRef.current = tags;
+    retryDelayRef.current = 1000;
+    connect();
+  };
+
+  const stop = () => {
+    stoppedRef.current = true;
+    clearTimeout(retryTimerRef.current);
+    const ws = wsRef.current;
+    wsRef.current = null;
+    ws?.close();
+    closePeer();
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setLocalStream(null);
+    setStatus('idle');
+  };
+
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
+  useEffect(() => () => stopRef.current(), []);
+
+  const switchCamera = async () => {
+    const cameras = camerasRef.current;
+    const stream = streamRef.current;
+    if (cameras.length < 2 || !stream) return;
+    const next = (cameraIndexRef.current + 1) % cameras.length;
+    try {
+      const fresh = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: cameras[next].deviceId } },
+      });
+      const track = fresh.getVideoTracks()[0];
+      const sender = pcRef.current?.getSenders().find((s) => s.track?.kind === 'video');
+      if (sender) await sender.replaceTrack(track);
+      stream.getVideoTracks().forEach((old) => {
+        stream.removeTrack(old);
+        old.stop();
+      });
+      stream.addTrack(track);
+      cameraIndexRef.current = next;
+      setLocalStream(new MediaStream(stream.getTracks()));
+    } catch {
+      setNotice('Could not switch camera.');
+    }
+  };
+
+  const submitReport = () => {
+    leaveCall({ type: 'report', reason: reportReason });
+    setReportOpen(false);
+    setReportReason('');
+    setNotice("Report sent. You won't be matched with this person again.");
+  };
+
+  const block = () => {
+    leaveCall({ type: 'block' });
+    setNotice("Blocked. You won't be matched with this person again.");
+  };
+
+  if (mediaError) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh', // Full height of the screen
-          textAlign: 'center',
-          padding: '2rem',
-          color: '#333',
-          backgroundColor: '#f8f9fa', // Optional background color for better visibility
-        }}
-      >
-        <h2 style={{ marginBottom: '1rem' }}>Permissions Required</h2>
-        <p style={{ marginBottom: '2rem' }}>
-          This app requires access to your camera and microphone to function. Please grant the necessary permissions and reload the page.
+      <main className="page" data-testid="media-error">
+        <h2>Camera and microphone needed</h2>
+        <p>
+          {mediaError === 'denied'
+            ? 'Access to your camera or microphone was blocked. Allow it in your browser’s site settings, then try again.'
+            : mediaError === 'nodevice'
+              ? 'No camera or microphone was found. Connect one, then try again.'
+              : 'Your camera or microphone could not be started. Close other apps using it, then try again.'}
         </p>
-        <button
-          onClick={() => window.location.reload()}
-          style={{
-            padding: '10px 20px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            backgroundColor: '#8F47FF',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-          }}
-        >
-          Reload Page
-        </button>
-      </div>
+        <Button variant="contained" onClick={start} data-testid="media-retry">Try again</Button>
+      </main>
     );
   }
 
-  const checkTheTracks = () => {  
-    remoteVideo.current.autoPlay = true;    
-    pcRef.current?.getStats().then((stats) => {
-      console.log(stats);
-    stats.forEach((report) => {
-      if (report.type === "inbound-rtp" && report.kind === "video") {
-        console.log("Video inbound-rtp stats:", report);
-        console.log("Packets received:", report.packetsReceived);
-        console.log("Frames decoded:", report.framesDecoded);
-      }
-    });
-  });
-  }
-
+  const inCall = status === 'connected';
+  const idle = status === 'idle' || status === 'banned';
+  const statusText = {
+    idle: 'Press Start to meet someone.',
+    connecting: 'Connecting…',
+    searching: 'Looking for someone…',
+    connected: 'Connected',
+    reconnecting: `Connection lost. Reconnecting in ${retrySeconds}s…`,
+    banned: `You are banned until ${bannedUntil ? new Date(bannedUntil).toLocaleString() : 'later'}.`,
+  }[status];
 
   return (
-    <div  style={{ padding: '2rem'}} >
-      {/* <button onClick={handleGetIps} style={{ marginBottom: '1rem' }}>Get IPs</button>
-      <p>{ipAddresses.length > 0 ? `IPs: ${ipAddresses.join(', ')}` : 'No IPs found'}</p> */}
-      {/* { <InstagramCTA />} */}
-        {showOnboarding && <Onboarding onClose={() => setShowOnboarding(false)} />}
-      <div
-        style={{
-          textAlign: 'right',
-        }}
-      >
-        {networkSpeed && (
-          <p style={{ fontSize: '14px', margin: '0' }}>
-            Speed: <strong style={{ color: networkQuality === 'Low' ? '#ff4d4d' : networkQuality === 'medium' ? '#FFC107' : '#4CAF50' }}>{networkSpeed.downlink} Mbps</strong> ({networkSpeed.effectiveType})
-          </p>
-        )}
-      </div>
-      {/* <button onClick={checkTheTracks} >Check</button> */}
-
-      <div
-        style={{
-          textAlign: 'right',
-        }}
-      >
-        <p style={{ fontSize: '14px', margin: '0' }}>
-          Network Quality: <strong style={{ color: networkQuality === 'Low' ? '#ff4d4d' : networkQuality === 'medium' ? '#FFC107' : '#4CAF50' }}>{networkQuality}</strong>
-        </p>
-      </div>
-
-
-
-     <div style={{ display: 'flex', marginBottom: '30px', justifyContent: 'end', gap: '0.5rem' }}>
-      {/* {hasSubmitted && <InstagramCTA />} */}
-      </div>
-      {/* Free Access Button */}
-      {/* {
-        !hasSubmitted && (
-          <div className="free-access-btn-container">
-            <button className="free-access-btn" onClick={handlePopupOpen}>
-              Get Lifetime Free Access!
-            </button>
-          </div>
-        )
-      } */}
-
-      
-
-      {/* Popup Modal */}
-      {isPopupOpen && (
-        <div className="popup-modal">
-          <div className="popup-content">
-            <button className="close-btn" onClick={handlePopupClose}>
-              &times;
-            </button>
-            <FreeAccessForm handleFormSubmitFreeAccess={handleFormSubmitFreeAccess} />
-          </div>
-        </div>
-      )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}> 
-            <img src={logo} className="logo" alt="logo" />
-          </div>
-        <div style={{ display: 'flex', justifyContent: 'End', gap: '0.5rem' }}> 
+    <div className="video-page">
+      <Onboarding />
+      <header className="top-bar">
+        <img src={logo} className="logo" alt="Vibezone" />
+        <div className="top-bar-info">
           <StatusWithNumber number={activeUsers} />
+          <span className="network">
+            Network:{' '}
+            <strong style={{ color: QUALITY_COLORS[networkQuality] || '#9e9e9e' }}>{networkQuality}</strong>
+          </span>
         </div>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' }}>
-          <TagInput onTagsChange={handleTagsChange} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.5rem'}}>
-            <button className='start-button'
-                onClick={isPaused ? handleResume : handlePause}
-                style={{ width: '70px', padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: isPaused ? '#28a745' : '#dc3545', color: '#fff' }}
-              >
-            {isPaused ? 'Start' : 'Stop'}
-          </button>
-            {!isPaused && (
-                <button className='skip-button' onClick={skip} style={{ width: '70px',padding: '0px', fontSize: '13px', height: '30px', textAlign: 'center', borderRadius: '10px', background: '#8F47FF', color: '#fff', }}>
-                Skip
-              </button>
-            )}
-        </div>
-      </div>
-      {/* <p>{JSON.stringify(availableCameras)} cams {currentCameraIndex}</p> */}
-      
+      </header>
+
       <div className="video-container">
         <div className="video-wrapper">
-          <video ref={localVideo} autoPlay playsInline  muted className="video" />
-          
-          {/* {availableCameras.length > 0 && (
-              <button
-              
-              style={{
-                position: 'absolute',
-                top: '15px',
-                right: '15px',
-                border: 'none',
-                borderRadius: '50%',
-                padding: '3px', 
-                color: 'white',
-                boxShadow: '0 4px 4px rgba(0, 0, 0, 0.2)',
-              }}
+          <video ref={localVideo} autoPlay playsInline muted className="video local" data-testid="local-video" />
+          {cameraCount > 1 && (
+            <IconButton
+              className="switch-camera"
+              onClick={switchCamera}
+              aria-label="Switch camera"
+              data-testid="switch-camera"
             >
-              <CameraswitchIcon onClick={switchCamera} style={{ fontSize: '14px', 
-                backgroundColor: '#6C63FF', 
-                padding: '7px', 
-                borderRadius: '50%',
-                position: 'absolute',
-                top: '-5px',
-                right: '-5px',
-                cursor: 'pointer',
-                }} /> 
-            </button> 
-          )} */}
-
+              <CameraswitchIcon />
+            </IconButton>
+          )}
         </div>
         <div className="video-wrapper">
-          {partnerId ? (
-            <>
-            <video ref={remoteVideo} autoPlay playsInline className="video" />
-            <div
-        style={{
-          position: 'absolute',
-          bottom: '10px', // Positioned below the video
-          right: '10px',
-          transform: 'translateX(-50%)',
-          width: '12px',
-          height: '12px',
-          backgroundColor: 
-          partnerNetworkQuality === 'High' ? '#4caf50' :  
-          partnerNetworkQuality === 'Medium' ? '#ff9800' : 
-          partnerNetworkQuality === 'Low' ? '#f44336' :   
-          '#9e9e9e', 
-          borderRadius: '50%',
-        }}
-        title="Partner Connected"
-      ></div>
-          </>
+          <video ref={remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
+          {inCall ? (
+            <span
+              className="partner-quality"
+              style={{ backgroundColor: QUALITY_COLORS[partnerQuality] || '#9e9e9e' }}
+              title={`Partner network: ${partnerQuality}`}
+            />
           ) : (
-            <div className="loader"><CircularProgress color='#8F47FF' /></div>
+            <div className="loader">
+              {!idle && <CircularProgress sx={{ color: '#8F47FF' }} aria-label="Searching" />}
+            </div>
           )}
         </div>
       </div>
 
-      <div className="container">
-        <div className="button-container">
-          <button onClick={toggleMic} className="icon-button video-button" >
-            {micOn ? <MicIcon className="icon" /> : <MicOffIcon className="icon" />}
-          </button>
-          <button onClick={toggleVideo} className="icon-button mute-button">
-            {videoOn ? <VideocamIcon className="icon" /> : <VideocamOffIcon className="icon" />}
-          </button>
-        </div>
-        <div className="dummy-div">
-          {/* Dummy content */}
-        </div>
+      <p className="status" role="status" data-testid="status">
+        {statusText}
+        {inCall && sharedTags.length > 0 && ` · You both like: ${sharedTags.join(', ')}`}
+      </p>
+
+      <div className="controls">
+        <Button
+          className="start-button"
+          variant="contained"
+          color={idle ? 'success' : 'error'}
+          onClick={idle ? start : stop}
+          data-testid="start-stop"
+        >
+          {idle ? 'Start' : 'Stop'}
+        </Button>
+        <Button
+          className="skip-button"
+          variant="contained"
+          disabled={!inCall}
+          onClick={() => leaveCall({ type: 'skip' })}
+          data-testid="skip"
+        >
+          Skip
+        </Button>
+        <IconButton
+          className="mute-button"
+          onClick={() => setMicOn((on) => !on)}
+          aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'}
+          aria-pressed={!micOn}
+          data-testid="toggle-mic"
+        >
+          {micOn ? <MicIcon className="icon" /> : <MicOffIcon className="icon" />}
+        </IconButton>
+        <IconButton
+          className="video-button"
+          onClick={() => setVideoOn((on) => !on)}
+          aria-label={videoOn ? 'Turn camera off' : 'Turn camera on'}
+          aria-pressed={!videoOn}
+          data-testid="toggle-video"
+        >
+          {videoOn ? <VideocamIcon className="icon" /> : <VideocamOffIcon className="icon" />}
+        </IconButton>
+        {inCall && (
+          <>
+            <Button variant="outlined" color="warning" onClick={() => setReportOpen(true)} data-testid="report">
+              Report
+            </Button>
+            <Button variant="outlined" color="error" onClick={block} data-testid="block">
+              Block
+            </Button>
+          </>
+        )}
       </div>
-{/* 
-      <div style={{ marginTop: '1rem' }}>
-          {partnerId ? (
-            <>
-              <p>you {socketId} Currently connected with partner: {partnerId} ({role})</p>
-              
-            </>
-          ) : (
-            <p>you {socketId} Waiting for a partner to match ...</p>
-          )}
-        </div>      */}
+
+      <TagInput onTagsChange={setTags} />
+      {!idle && <p className="hint">Tag changes apply the next time you press Start.</p>}
+
+      <footer className="footer">
+        <Link to="/terms" data-testid="footer-terms">Terms</Link>
+        <Link to="/privacy" data-testid="footer-privacy">Privacy</Link>
+      </footer>
+
+      <Dialog open={reportOpen} onClose={() => setReportOpen(false)} aria-labelledby="report-title">
+        <DialogTitle id="report-title">Report this person</DialogTitle>
+        <DialogContent>
+          <RadioGroup
+            aria-labelledby="report-title"
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+          >
+            {REPORT_REASONS.map(([value, label]) => (
+              <FormControlLabel
+                key={value}
+                value={value}
+                control={<Radio data-testid={`report-reason-${value}`} />}
+                label={label}
+              />
+            ))}
+          </RadioGroup>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReportOpen(false)} data-testid="report-cancel">Cancel</Button>
+          <Button
+            variant="contained"
+            color="warning"
+            disabled={!reportReason || !inCall}
+            onClick={submitReport}
+            data-testid="report-submit"
+          >
+            Report
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={Boolean(notice)}
+        autoHideDuration={4000}
+        onClose={() => setNotice('')}
+        message={notice}
+        data-testid="notice"
+      />
     </div>
   );
 }
