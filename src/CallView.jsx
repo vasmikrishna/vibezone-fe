@@ -1,0 +1,212 @@
+import { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Snackbar from '@mui/material/Snackbar';
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
+import VideocamIcon from '@mui/icons-material/Videocam';
+import VideocamOffIcon from '@mui/icons-material/VideocamOff';
+import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
+import CallEndIcon from '@mui/icons-material/CallEnd';
+import SendIcon from '@mui/icons-material/Send';
+import './video.css';
+
+const MAX_CHAT_LENGTH = 500;
+
+const REPORT_REASONS = [
+  ['nudity', 'Nudity or sexual content'],
+  ['harassment', 'Harassment or hate'],
+  ['underage', 'Appears to be under 18'],
+  ['spam', 'Spam or advertising'],
+  ['other', 'Something else'],
+];
+
+const QUALITY_COLORS = { High: '#4caf50', Medium: '#ff9800', Low: '#f44336' };
+
+/** Shown instead of the call when the camera or microphone cannot start. */
+export function MediaError({ call, onRetry }) {
+  return (
+    <main className="page" data-testid="media-error">
+      <h2>Camera and microphone needed</h2>
+      <p>
+        {call.mediaError === 'denied'
+          ? `Access to your camera or microphone was blocked. Allow it in ${Capacitor.isNativePlatform() ? 'your device Settings, under Vibezone' : 'your browser’s site settings'}, then try again.`
+          : call.mediaError === 'nodevice'
+            ? 'No camera or microphone was found. Connect one, then try again.'
+            : 'Your camera or microphone could not be started. Close other apps using it, then try again.'}
+      </p>
+      <Button variant="contained" onClick={onRetry} data-testid="media-retry">Try again</Button>
+    </main>
+  );
+}
+
+export function CallVideos({ call, waiting }) {
+  const inCall = call.status === 'connected';
+  return (
+    <div className="video-container">
+      <div className="video-wrapper">
+        <video ref={call.remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
+        {inCall ? (
+          <span
+            className="partner-quality"
+            style={{ backgroundColor: QUALITY_COLORS[call.partnerQuality] || '#9e9e9e' }}
+            title={`Partner network: ${call.partnerQuality}`}
+          />
+        ) : (
+          <div className="loader">
+            {waiting && <CircularProgress sx={{ color: '#8F47FF' }} aria-label="Waiting" />}
+          </div>
+        )}
+      </div>
+      <div className="video-wrapper">
+        <video ref={call.localVideo} autoPlay playsInline muted className="video local" data-testid="local-video" />
+        {call.cameraCount > 1 && (
+          <IconButton
+            className="switch-camera"
+            onClick={call.switchCamera}
+            aria-label="Switch camera"
+            data-testid="switch-camera"
+          >
+            <CameraswitchIcon />
+          </IconButton>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Mic, camera and hang-up, then the page's own buttons, then Report and Block during a call. */
+export function CallControls({ call, idle, onHangUp, onReport, onBlock, children }) {
+  return (
+    <div className="controls">
+      <IconButton
+        className="mute-button"
+        onClick={() => call.setMicOn((on) => !on)}
+        aria-label={call.micOn ? 'Mute microphone' : 'Unmute microphone'}
+        aria-pressed={!call.micOn}
+        data-testid="toggle-mic"
+      >
+        {call.micOn ? <MicIcon className="icon" /> : <MicOffIcon className="icon" />}
+      </IconButton>
+      <IconButton
+        className="video-button"
+        onClick={() => call.setVideoOn((on) => !on)}
+        aria-label={call.videoOn ? 'Turn camera off' : 'Turn camera on'}
+        aria-pressed={!call.videoOn}
+        data-testid="toggle-video"
+      >
+        {call.videoOn ? <VideocamIcon className="icon" /> : <VideocamOffIcon className="icon" />}
+      </IconButton>
+      <IconButton className="hang-up" disabled={idle} onClick={onHangUp} aria-label="Stop" data-testid="hang-up">
+        <CallEndIcon />
+      </IconButton>
+      {children}
+      {call.status === 'connected' && (
+        <>
+          <Button variant="outlined" color="warning" onClick={onReport} data-testid="report">
+            Report
+          </Button>
+          <Button variant="outlined" color="error" onClick={onBlock} data-testid="block">
+            Block
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function ChatPanel({ call }) {
+  const inCall = call.status === 'connected';
+  return (
+    <aside className="chat-panel" aria-label="Text chat">
+      <h2 className="chat-partner" data-testid="partner-name">
+        {inCall ? call.partnerName : 'Chat'}
+      </h2>
+      <ul className="chat-messages" ref={call.chatListRef} aria-live="polite" data-testid="chat-messages">
+        {call.messages.length === 0 && (
+          <li className="chat-empty">{inCall ? 'Say hello.' : 'Messages appear here during a call.'}</li>
+        )}
+        {call.messages.map((m) => (
+          <li key={m.id} className={`chat-message ${m.from}`} data-testid="chat-message">
+            <span className="visually-hidden">{m.from === 'me' ? 'You: ' : `${call.partnerName}: `}</span>
+            {m.text}
+          </li>
+        ))}
+      </ul>
+      <form className="chat-form" onSubmit={call.sendChat}>
+        <input
+          type="text"
+          value={call.chatText}
+          onChange={(e) => call.setChatText(e.target.value)}
+          maxLength={MAX_CHAT_LENGTH}
+          disabled={!inCall}
+          placeholder="Type a message"
+          aria-label="Type a message"
+          className="chat-input"
+          data-testid="chat-input"
+        />
+        <IconButton
+          type="submit"
+          disabled={!inCall || !call.chatText.trim()}
+          aria-label="Send message"
+          className="chat-send"
+          data-testid="chat-send"
+        >
+          <SendIcon />
+        </IconButton>
+      </form>
+    </aside>
+  );
+}
+
+export function ReportDialog({ open, inCall, onClose, onSubmit }) {
+  const [reason, setReason] = useState('');
+  const submit = () => {
+    onSubmit(reason);
+    setReason('');
+  };
+  return (
+    <Dialog open={open} onClose={onClose} aria-labelledby="report-title">
+      <DialogTitle id="report-title">Report this person</DialogTitle>
+      <DialogContent>
+        <RadioGroup aria-labelledby="report-title" value={reason} onChange={(e) => setReason(e.target.value)}>
+          {REPORT_REASONS.map(([value, label]) => (
+            <FormControlLabel
+              key={value}
+              value={value}
+              control={<Radio data-testid={`report-reason-${value}`} />}
+              label={label}
+            />
+          ))}
+        </RadioGroup>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} data-testid="report-cancel">Cancel</Button>
+        <Button variant="contained" color="warning" disabled={!reason || !inCall} onClick={submit} data-testid="report-submit">
+          Report
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+export function Notice({ call }) {
+  return (
+    <Snackbar
+      open={Boolean(call.notice)}
+      autoHideDuration={4000}
+      onClose={() => call.setNotice('')}
+      message={call.notice}
+      data-testid="notice"
+    />
+  );
+}

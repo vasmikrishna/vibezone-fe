@@ -1,13 +1,17 @@
 import { usePageTitle } from './usePageTitle';
 import { Link, NavLink } from 'react-router-dom';
 import Button from '@mui/material/Button';
+import { Capacitor } from '@capacitor/core';
 import logo from './assets/vibezone-logo.svg';
 import './site.css';
 
+// The iOS app offers rooms only; random chat stays on Android and the web.
+export const isIOS = Capacitor.getPlatform() === 'ios';
+
 export function StartButton({ testid = 'start-chatting', size = 'medium' }) {
   return (
-    <Button component={Link} to="/chat" variant="contained" size={size} disableElevation data-testid={testid}>
-      Start chatting
+    <Button component={Link} to={isIOS ? '/rooms' : '/chat'} variant="contained" size={size} disableElevation data-testid={testid}>
+      {isIOS ? 'Browse rooms' : 'Start chatting'}
     </Button>
   );
 }
@@ -22,6 +26,7 @@ export function Header() {
         <NavLink to="/" end data-testid="nav-home">Home</NavLink>
         <NavLink to="/about" data-testid="nav-about">About</NavLink>
         <NavLink to="/contact" data-testid="nav-contact">Contact</NavLink>
+        <NavLink to="/rooms" data-testid="nav-rooms">Rooms</NavLink>
       </nav>
       <StartButton testid="nav-start" />
     </header>

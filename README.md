@@ -7,6 +7,15 @@ Currently, two official plugins are available:
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
+## Tests
+
+```
+pnpm test:e2e [http://localhost:5173/chat]   # random chat, frontend and backend running
+pnpm test:e2e:rooms [http://localhost:5273]  # rooms; starts the backend on 3101 itself (MongoDB on 27017)
+```
+
+Set `CHROMIUM_PATH` to use an existing Chromium. For rooms, serve the frontend with `VITE_SERVER_URL=ws://localhost:3101 npx vite --port 5273`.
+
 ## Mobile apps (Capacitor)
 
 App id `in.vibezone.app`. Web assets are bundled into the app.

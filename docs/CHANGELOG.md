@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — accounts and private rooms (#36)
+
+- Accounts: `/login` (phone with +91 default, 6 digit SMS code, resend after 30 s, Terms and Privacy accepted first) and `/profile` (name, date of birth with an 18+ check before booking or creating, Delete account with a confirmation dialog, Sign out). The token is kept in `localStorage` as `vibezoneToken`; a 401 signs out.
+- Private rooms: `/rooms` lists upcoming and live rooms (name, host, date, duration, time per person, tickets left) with Book, Cancel booking, Join and Cancel room (host); Create room dialog with name, description, start, duration, time per person and tickets. No payments.
+- Live room `/rooms/:id`: the host sees the queue with Next and End room; attendees see their queue position, then the call with a countdown. Report and Block end the call and remove the attendee.
+- Call logic moved from `VideoPage.jsx` into `src/useCall.js` and the call UI into `src/CallView.jsx`, shared by random chat and rooms; random chat behaviour is unchanged.
+- iOS app: `/` and `/chat` redirect to `/rooms` and no link leads to random chat. Android and the web keep `/chat`. The site header gains Rooms.
+- Terms and Privacy cover accounts, phone number, date of birth, rooms and account deletion; `CONSENT_VERSION` is 2, so the random chat consent is asked again.
+- `e2e/rooms.mjs` (`pnpm test:e2e:rooms`) starts its own backend and covers login, profiles, create, book, join, Next, video, chat, session end, End room, under-18 refusal and Delete account.
+
 ## Unreleased — launch readiness (#35)
 
 - Stage 2 site: public home at `/` (hero, About, What do I want today, Why choose us, Features, Join us, FAQ), `/about`, `/contact` (email from `VITE_CONTACT_EMAIL`), shared header and footer. Video chat with the 18+ consent gate moved to `/chat`; the native Capacitor app redirects `/` to `/chat`. Per-page titles and meta description. e2e updated for `/chat`.

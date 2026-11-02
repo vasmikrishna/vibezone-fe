@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Capacitor } from '@capacitor/core';
 
 import VideoPage from './VideoPage';
 import Consent from './Consent';
@@ -8,9 +7,15 @@ import { Terms, Privacy } from './Legal';
 import Home from './Home';
 import About from './About';
 import Contact from './Contact';
+import Login from './Login';
+import Profile from './Profile';
+import Rooms from './Rooms';
+import RoomPage from './RoomPage';
+import { isIOS } from './Layout';
+import { Capacitor } from '@capacitor/core';
 import { usePageTitle } from './usePageTitle';
 
-const CONSENT_VERSION = 1;
+const CONSENT_VERSION = 2;
 
 function Chat() {
   usePageTitle('Start chatting - Vibezone');
@@ -28,8 +33,15 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={Capacitor.isNativePlatform() ? <Navigate to="/chat" replace /> : <Home />} />
-        <Route path="/chat" element={<Chat />} />
+        <Route
+          path="/"
+          element={isIOS ? <Navigate to="/rooms" replace /> : Capacitor.isNativePlatform() ? <Navigate to="/chat" replace /> : <Home />}
+        />
+        <Route path="/chat" element={isIOS ? <Navigate to="/rooms" replace /> : <Chat />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/rooms" element={<Rooms />} />
+        <Route path="/rooms/:id" element={<RoomPage />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/terms" element={<Terms />} />
