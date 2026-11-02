@@ -2,6 +2,8 @@
 
 ## Unreleased — launch readiness (#35)
 
+- Stage 2 site: public home at `/` (hero, About, What do I want today, Why choose us, Features, Join us, FAQ), `/about`, `/contact` (email from `VITE_CONTACT_EMAIL`), shared header and footer. Video chat with the 18+ consent gate moved to `/chat`; the native Capacitor app redirects `/` to `/chat`. Per-page titles and meta description. e2e updated for `/chat`.
+
 - Light redesign: white page, #8F47FF accents, self-hosted Poppins (`@fontsource/poppins`), light MUI theme; dark background image removed so Consent and Legal pages stay readable.
 - New layout: top bar with logo, Enter Name, Key Words (Enter or comma adds), Connect/Stop and live count; videos with mic, camera, red hang-up, Skip, Report and Block on the left, chat on the right; stacked on phones with 44px touch targets.
 - Text chat during calls (filtered by the server, text only, cleared when the call ends, Enter sends). Partner display name shown; your name is saved in `localStorage` as `vibezoneName`.

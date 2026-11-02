@@ -1,0 +1,36 @@
+.site { max-width: 1100px; margin: 0 auto; }
+.site h1, .site h2, .site h3 { font-weight: 500; margin: 0 0 .5rem; }
+.site h2 { font-size: 1.5rem; text-align: center; }
+.site-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; padding: .5rem 0; }
+.site-nav { display: flex; gap: 1rem; order: 3; width: 100%; justify-content: center; }
+.site-nav a, .site-footer a { color: #1f1f1f; font-weight: 400; padding: .5rem .25rem; }
+.site-nav a.active { color: #8f47ff; font-weight: 500; }
+.site-logo { display: flex; }
+.section { padding: 2rem .25rem; }
+.section p { color: #444; }
+.narrow { max-width: 720px; margin: 0 auto; }
+.hero { display: grid; gap: 1.5rem; align-items: center; }
+.hero h1 { font-size: 2rem; }
+.accent { color: #8f47ff; }
+.hero-art { width: 100%; max-width: 360px; justify-self: center; }
+.chips { list-style: none; padding: 0; display: grid; gap: .75rem; }
+.chips li { background: #f3ecff; color: #6a2fd0; border-radius: 8px; padding: .75rem 1rem; text-align: center; }
+.cards { display: grid; gap: 1rem; }
+.card { border: 1px solid #ece4fb; border-radius: 12px; padding: 1rem; background: #fff; }
+.card h3 { font-size: 1.05rem; color: #6a2fd0; }
+.tint { background: #f8f4ff; border-radius: 16px; }
+.join { background: #2b2b2b; color: #fff; border-radius: 16px; }
+.join h2, .join p { text-align: left; color: #fff; }
+.faq { border: 1px solid #ece4fb; border-radius: 8px; padding: .5rem 1rem; margin-bottom: .5rem; }
+.faq summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 500; }
+.site-footer { background: #1f1f1f; color: #ddd; border-radius: 16px 16px 0 0; padding: 1.5rem 1rem; text-align: center; margin-top: 2rem; }
+.site-footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; }
+.site-footer a { color: #fff; }
+.site-footer p { margin: .5rem 0 0; font-size: .85rem; }
+@media (min-width: 700px) {
+  .site-nav { order: 0; width: auto; }
+  .hero { grid-template-columns: 1fr 1fr; }
+  .hero h1 { font-size: 2.75rem; }
+  .chips { grid-template-columns: repeat(3, 1fr); }
+  .cards { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+}

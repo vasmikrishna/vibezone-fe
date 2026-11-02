@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 
-const url = process.argv[2] || 'http://localhost:5173/';
+const url = process.argv[2] || 'http://localhost:5173/chat';
+const home = new URL('/', url).href;
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
   args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'],
@@ -100,6 +101,23 @@ await c.page.getByTestId('report-reason-spam').click();
 await c.page.getByTestId('report-submit').click();
 await c.page.getByText('Report sent').waitFor({ timeout: 5000 });
 console.log('ok: report ends the call');
+
+const site = await browser.newPage({ viewport: { width: 375, height: 812 } });
+await site.goto(home);
+assert.ok((await site.title()).includes('Live video chat'));
+assert.equal(await site.getByRole('heading', { level: 1 }).count(), 1);
+assert.ok(await site.evaluate(() => document.documentElement.scrollWidth <= 375), 'home: no horizontal scroll at 375px');
+for (const t of ['nav-about', 'nav-contact', 'footer-terms']) await site.getByTestId(t).click();
+await site.goto(home);
+await site.getByTestId('hero-start').click();
+await site.waitForURL('**/chat');
+await site.getByTestId('consent-continue').waitFor();
+for (const p of ['about', 'contact']) {
+  await site.goto(new URL(`/${p}`, home).href);
+  assert.ok(await site.evaluate(() => document.documentElement.scrollWidth <= 375), `${p}: no horizontal scroll`);
+}
+await site.close();
+console.log('ok: home, about, contact render; Start chatting opens /chat');
 
 const secondTab = await a.context.newPage();
 await secondTab.goto(url);
