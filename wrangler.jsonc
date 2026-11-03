@@ -1,4 +1,4 @@
-// Static site on Cloudflare at vibezone.varchas.store. Build with VITE_SERVER_URL set, then `wrangler deploy`.
+// Static site on Cloudflare at vibezone.varchas.store. `pnpm build && wrangler deploy` (settings in .env.production).
 {
   "name": "vibezone",
   "compatibility_date": "2026-10-01",
