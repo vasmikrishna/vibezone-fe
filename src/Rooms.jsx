@@ -152,7 +152,7 @@ export default function Rooms() {
   const adult = Boolean(user?.adult);
 
   return (
-    <SiteLayout title="Rooms - Vibezone">
+    <SiteLayout title="Rooms - Vibezone" account>
       <section className="section">
         <div className="rooms-head">
           <h1>Private rooms</h1>

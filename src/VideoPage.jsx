@@ -6,6 +6,7 @@ import StatusWithNumber from './components/activeUsers';
 import TagInput from './components/Tags/taginput';
 import { useCall } from './useCall';
 import { api, getToken } from './api';
+import AccountSidebar from './AccountSidebar';
 import { MediaError, CallVideos, CallControls, ChatPanel, ReportDialog, Notice } from './CallView';
 import logo from './assets/vibezone-logo.svg';
 import './video.css';
@@ -69,79 +70,82 @@ export default function VideoPage() {
   }[status];
 
   return (
-    <div className="video-page">
-      <Onboarding />
-      <header className="top-bar">
-        <img src={logo} className="logo" alt="Vibezone" />
-        <div className="top-fields">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => changeName(e.target.value)}
-            maxLength={MAX_NAME_LENGTH}
-            placeholder="Enter Name"
-            aria-label="Your display name"
-            className="name-input"
-            data-testid="name-input"
-          />
-          <TagInput onTagsChange={setTags} />
-          <Button
-            className="start-button"
-            variant="contained"
-            disableElevation
-            color={idle ? 'primary' : 'error'}
-            onClick={idle ? start : call.stop}
-            data-testid="start-stop"
-          >
-            {idle ? 'Connect' : 'Stop'}
-          </Button>
-        </div>
-        <div className="top-bar-info">
-          <StatusWithNumber number={call.activeUsers} />
-          {signedIn ? (
-            <span className="streak-chip" role="img" aria-label={`${call.streak?.count ?? 0}-day streak`} data-testid="streak-chip">
-              🔥 {call.streak?.count ?? 0}
-            </span>
-          ) : (
-            <Link to="/login" className="streak-link" data-testid="streak-sign-in">Sign in to keep a streak</Link>
-          )}
-        </div>
-      </header>
-      {!idle && <p className="hint">Name and key word changes apply the next time you press Connect.</p>}
-
-      <main className="call-layout">
-        <section className="call-column" aria-label="Video call">
-          <CallVideos call={call} waiting={!idle} />
-
-          <p className="status" role="status" data-testid="status">
-            {statusText}
-            {inCall && call.sharedTags.length > 0 && ` · You both like: ${call.sharedTags.join(', ')}`}
-          </p>
-
-          <CallControls call={call} idle={idle} onHangUp={call.stop} onReport={() => setReportOpen(true)} onBlock={block}>
+    <div className="video-shell">
+      {signedIn && <AccountSidebar />}
+      <div className="video-page">
+        <Onboarding />
+        <header className="top-bar">
+          <img src={logo} className="logo" alt="Vibezone" />
+          <div className="top-fields">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => changeName(e.target.value)}
+              maxLength={MAX_NAME_LENGTH}
+              placeholder="Enter Name"
+              aria-label="Your display name"
+              className="name-input"
+              data-testid="name-input"
+            />
+            <TagInput onTagsChange={setTags} />
             <Button
-              className="skip-button"
+              className="start-button"
               variant="contained"
               disableElevation
-              disabled={!inCall}
-              onClick={() => call.leaveCall({ type: 'skip' })}
-              data-testid="skip"
+              color={idle ? 'primary' : 'error'}
+              onClick={idle ? start : call.stop}
+              data-testid="start-stop"
             >
-              Skip
+              {idle ? 'Connect' : 'Stop'}
             </Button>
-          </CallControls>
-        </section>
+          </div>
+          <div className="top-bar-info">
+            <StatusWithNumber number={call.activeUsers} />
+            {signedIn ? (
+              <span className="streak-chip" role="img" aria-label={`${call.streak?.count ?? 0}-day streak`} data-testid="streak-chip">
+                🔥 {call.streak?.count ?? 0}
+              </span>
+            ) : (
+              <Link to="/login" className="streak-link" data-testid="streak-sign-in">Sign in to keep a streak</Link>
+            )}
+          </div>
+        </header>
+        {!idle && <p className="hint">Name and key word changes apply the next time you press Connect.</p>}
 
-        <ChatPanel call={call} />
-      </main>
+        <main className="call-layout">
+          <section className="call-column" aria-label="Video call">
+            <CallVideos call={call} waiting={!idle} />
 
-      <footer className="footer">
-        <Link to="/terms" data-testid="footer-terms">Terms</Link>
-        <Link to="/privacy" data-testid="footer-privacy">Privacy</Link>
-      </footer>
+            <p className="status" role="status" data-testid="status">
+              {statusText}
+              {inCall && call.sharedTags.length > 0 && ` · You both like: ${call.sharedTags.join(', ')}`}
+            </p>
 
-      <ReportDialog open={reportOpen} inCall={inCall} onClose={() => setReportOpen(false)} onSubmit={submitReport} />
-      <Notice call={call} />
+            <CallControls call={call} idle={idle} onHangUp={call.stop} onReport={() => setReportOpen(true)} onBlock={block}>
+              <Button
+                className="skip-button"
+                variant="contained"
+                disableElevation
+                disabled={!inCall}
+                onClick={() => call.leaveCall({ type: 'skip' })}
+                data-testid="skip"
+              >
+                Skip
+              </Button>
+            </CallControls>
+          </section>
+
+          <ChatPanel call={call} />
+        </main>
+
+        <footer className="footer">
+          <Link to="/terms" data-testid="footer-terms">Terms</Link>
+          <Link to="/privacy" data-testid="footer-privacy">Privacy</Link>
+        </footer>
+
+        <ReportDialog open={reportOpen} inCall={inCall} onClose={() => setReportOpen(false)} onSubmit={submitReport} />
+        <Notice call={call} />
+      </div>
     </div>
   );
 }

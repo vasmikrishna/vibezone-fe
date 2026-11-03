@@ -2,6 +2,8 @@ import { usePageTitle } from './usePageTitle';
 import { Link, NavLink } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import { Capacitor } from '@capacitor/core';
+import { getToken } from './api';
+import AccountSidebar from './AccountSidebar';
 import logo from './assets/vibezone-logo.svg';
 import './site.css';
 
@@ -47,12 +49,20 @@ export function Footer() {
   );
 }
 
-export function SiteLayout({ title, dark = false, children }) {
+/** `account` adds the signed-in account sidebar beside the page. */
+export function SiteLayout({ title, dark = false, account = false, children }) {
   usePageTitle(title);
   return (
     <div className={dark ? 'site site-dark' : 'site'}>
       <Header />
-      <main>{children}</main>
+      {account && getToken() ? (
+        <div className="account-layout">
+          <AccountSidebar />
+          <main>{children}</main>
+        </div>
+      ) : (
+        <main>{children}</main>
+      )}
       <Footer />
     </div>
   );

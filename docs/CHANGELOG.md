@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — account sidebar and badges (#39)
+
+- Signed-in account sidebar (`src/AccountSidebar.jsx`) on Profile, Rooms and, from 900px wide, beside video chat: letter avatar, name, streak, phone or email, call count, and links to Video chat (not on iOS), Rooms, Profile, Privacy and Security, Badges and Sign out. Below 900px it is a compact block with a scrollable row of chips.
+- Badges dialog (`src/BadgesDialog.jsx`) lists every badge from `/api/me`; earned ones in colour, the rest greyed and marked Locked. The profile shows earned badge icons and "See all badges".
+
 ## Unreleased — Google sign-in, streaks, new home page (#37)
 
 - "Continue with Google" on `/login` (web only, shown when `VITE_GOOGLE_CLIENT_ID` is set); phone login stays below it.
