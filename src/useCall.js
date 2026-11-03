@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 const MAX_RETRY_MS = 30000;
@@ -55,6 +55,13 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
   const [retrySeconds, setRetrySeconds] = useState(0);
   const [bannedUntil, setBannedUntil] = useState(null);
   const [notice, setNotice] = useState('');
+  const [streak, setStreakState] = useState(null); // { count, best } for a signed-in user
+  const streakRef = useRef(null);
+
+  const setStreak = useCallback((value) => {
+    streakRef.current = value;
+    setStreakState(value);
+  }, []);
 
   const send = (message) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(message));
@@ -263,6 +270,12 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
         closePeer();
         setStatus('searching');
         break;
+      case 'streak': {
+        if (!Number.isFinite(data.count)) break;
+        if (data.count > (streakRef.current?.count ?? 0)) setNotice(`🔥 ${data.count}-day streak!`);
+        setStreak({ count: data.count, best: Number.isFinite(data.best) ? data.best : data.count });
+        break;
+      }
       case 'error':
         setNotice(data.message === 'chat rate limit' ? 'Slow down: at most 2 messages a second.' : `Server error: ${data.message}`);
         break;
@@ -401,6 +414,7 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
   return {
     status, mediaError, micOn, setMicOn, videoOn, setVideoOn, cameraCount, sharedTags, activeUsers,
     partnerName, messages, chatText, setChatText, partnerQuality, retrySeconds, bannedUntil, notice, setNotice,
+    streak, setStreak,
     localVideo, remoteVideo, chatListRef,
     send, start, stop, leaveCall, sendChat, switchCamera,
   };

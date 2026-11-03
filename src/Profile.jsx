@@ -85,7 +85,19 @@ export default function Profile() {
         <h1>Your profile</h1>
         {user && (
           <form className="form" onSubmit={save} noValidate>
-            <p data-testid="profile-phone">Phone: {user.phone}</p>
+            {user.phone ? (
+              <p data-testid="profile-phone">Phone: {user.phone}</p>
+            ) : (
+              user.email && <p data-testid="profile-email">Email: {user.email}</p>
+            )}
+            <section className="streak-card" aria-labelledby="streak-title" data-testid="profile-streak">
+              <h2 id="streak-title">🔥 Your streak</h2>
+              <dl>
+                <div><dt>Current</dt><dd data-testid="profile-streak-count">{user.streak?.count ?? 0} days</dd></div>
+                <div><dt>Best</dt><dd data-testid="profile-streak-best">{user.streak?.best ?? 0} days</dd></div>
+              </dl>
+              <p>Have a video call of at least a minute every day to keep your streak.</p>
+            </section>
             <TextField
               label="Name shown to others"
               value={name}

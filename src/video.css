@@ -367,3 +367,17 @@
   margin: 0;
   font-size: 0.875rem;
 }
+
+.streak-chip {
+  margin-top: 0.25rem;
+  padding: 0.125rem 0.625rem;
+  font-weight: 600;
+  color: #6a2fd0;
+  background-color: #f3ecff;
+  border-radius: 999px;
+}
+
+.streak-link {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}

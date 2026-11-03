@@ -47,10 +47,10 @@ export function Footer() {
   );
 }
 
-export function SiteLayout({ title, children }) {
+export function SiteLayout({ title, dark = false, children }) {
   usePageTitle(title);
   return (
-    <div className="site">
+    <div className={dark ? 'site site-dark' : 'site'}>
       <Header />
       <main>{children}</main>
       <Footer />

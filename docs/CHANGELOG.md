@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Google sign-in, streaks, new home page (#37)
+
+- "Continue with Google" on `/login` (web only, shown when `VITE_GOOGLE_CLIENT_ID` is set); phone login stays below it.
+- Daily streaks: signed-in users send their token with random chat; a streak chip in the chat top bar, a "🔥 N-day streak!" notice, and a streak card on the profile.
+- New dark home page: hero, features, how it works, streak teaser, FAQ, call to action.
+- Hosted at vibezone.varchas.store on Cloudflare (`wrangler.jsonc`).
+
 ## Unreleased — accounts and private rooms (#36)
 
 - Accounts: `/login` (phone with +91 default, 6 digit SMS code, resend after 30 s, Terms and Privacy accepted first) and `/profile` (name, date of birth with an 18+ check before booking or creating, Delete account with a confirmation dialog, Sign out). The token is kept in `localStorage` as `vibezoneToken`; a 401 signs out.
