@@ -4,3 +4,4 @@
 - Tasks: [completed](tasks/completed.md), [in progress](tasks/in-progress.md), [planned](tasks/planned.md)
 - [Feature: marketing site](features/site.md)
 - [Feature: accounts and private rooms](features/rooms.md)
+- [Feature: account sidebar and badges](features/account.md)

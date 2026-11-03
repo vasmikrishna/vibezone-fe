@@ -9,6 +9,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import { SiteLayout } from './Layout';
+import BadgesDialog, { BadgeIcon } from './BadgesDialog';
 import { api, getToken, clearToken } from './api';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -22,6 +23,7 @@ export default function Profile() {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [badgesOpen, setBadgesOpen] = useState(false);
   const token = getToken();
 
   useEffect(() => {
@@ -80,7 +82,7 @@ export default function Profile() {
   };
 
   return (
-    <SiteLayout title="Profile - Vibezone">
+    <SiteLayout title="Profile - Vibezone" account>
       <section className="section form-page">
         <h1>Your profile</h1>
         {user && (
@@ -97,6 +99,15 @@ export default function Profile() {
                 <div><dt>Best</dt><dd data-testid="profile-streak-best">{user.streak?.best ?? 0} days</dd></div>
               </dl>
               <p>Have a video call of at least a minute every day to keep your streak.</p>
+            </section>
+            <section className="badges-row" aria-labelledby="badges-row-title">
+              <h2 id="badges-row-title">Your badges</h2>
+              <div className="badges-earned" data-testid="profile-badges-earned">
+                {user.badges?.some((b) => b.earned)
+                  ? user.badges.filter((b) => b.earned).map((b) => <BadgeIcon key={b.id} id={b.id} title={b.name} />)
+                  : <p>No badges yet</p>}
+              </div>
+              <Button onClick={() => setBadgesOpen(true)} data-testid="profile-badges">See all badges</Button>
             </section>
             <TextField
               label="Name shown to others"
@@ -136,6 +147,7 @@ export default function Profile() {
         </div>
       </section>
 
+      <BadgesDialog open={badgesOpen} onClose={() => setBadgesOpen(false)} badges={user?.badges} />
       <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)} aria-labelledby="delete-title" aria-describedby="delete-text">
         <DialogTitle id="delete-title">Delete your account?</DialogTitle>
         <DialogContent>
