@@ -1,0 +1,11 @@
+// Static site on Cloudflare at vibezone.varchas.store. `pnpm build && wrangler deploy` (settings in .env.production).
+{
+  "name": "vibezone",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./dist", "not_found_handling": "single-page-application" },
+  "routes": [
+    { "pattern": "vibezone.varchas.store", "custom_domain": true },
+    // Overrides the zone's *.varchas.store/* route to the estore worker.
+    { "pattern": "vibezone.varchas.store/*", "zone_name": "varchas.store" }
+  ]
+}
