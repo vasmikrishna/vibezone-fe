@@ -77,6 +77,33 @@ assert.equal(await a.page.locator('[data-testid=chat-message] b, [data-testid=ch
 assert.equal(await a.page.evaluate(() => window.__xss), undefined);
 console.log('ok: chat both ways, partner name shown, a script tag renders as text');
 
+const shots = process.env.SHOT_DIR; // optional: where to save B's view of each state
+const shoot = async (name) => {
+  if (!shots) return;
+  await b.page.getByTestId('remote-video').evaluate((v) => v.scrollIntoView({ block: 'center' }));
+  await b.page.screenshot({ path: `${shots}/${name}.png` });
+};
+await a.page.getByTestId('toggle-video').click();
+await a.page.getByTestId('local-camera-off').waitFor({ timeout: 3000 });
+await b.page.getByTestId('remote-camera-off').getByText('Alice turned their camera off').waitFor({ timeout: 5000 });
+await shoot('b-sees-camera-off');
+await a.page.getByTestId('toggle-video').click();
+await b.page.getByTestId('remote-camera-off').waitFor({ state: 'detached', timeout: 5000 });
+await a.page.getByTestId('toggle-mic').click();
+await b.page.getByTestId('remote-mic-off').waitFor({ timeout: 5000 });
+await a.page.getByTestId('toggle-mic').click();
+await b.page.getByTestId('remote-mic-off').waitFor({ state: 'detached', timeout: 5000 });
+const setHidden = (u, hidden) => u.page.evaluate((h) => {
+  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (h ? 'hidden' : 'visible') });
+  document.dispatchEvent(new Event('visibilitychange'));
+}, hidden);
+await setHidden(a, true);
+await b.page.getByTestId('remote-on-hold').getByText('Alice is on hold').waitFor({ timeout: 5000 });
+await shoot('b-sees-on-hold');
+await setHidden(a, false);
+await b.page.getByTestId('remote-on-hold').waitFor({ state: 'detached', timeout: 5000 });
+console.log('ok: partner sees camera off, mic off and on hold, and each clears again');
+
 await a.page.getByTestId('skip').click();
 await waitStatus(b, 'Looking', 5000);
 assert.deepEqual(await messages(a), []);

@@ -17,6 +17,7 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff';
 import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
+import PauseIcon from '@mui/icons-material/Pause';
 import CallEndIcon from '@mui/icons-material/CallEnd';
 import SendIcon from '@mui/icons-material/Send';
 import PersonAddAlt from '@mui/icons-material/PersonAddAlt';
@@ -52,12 +53,50 @@ export function MediaError({ call, onRetry }) {
   );
 }
 
+/** What the screen reader hears when the partner's camera or hold state changes. */
+function useAwayAnnouncement(inCall, away, name) {
+  const key = inCall ? away : 'out';
+  const [last, setLast] = useState({ key, text: '' });
+  if (last.key !== key) {
+    const text = !inCall ? ''
+      : away === 'hold' ? `${name} is on hold`
+        : away === 'camera' ? `${name} turned their camera off`
+          : last.key === 'hold' ? `${name} is back`
+            : last.key === 'camera' ? `${name} turned their camera on` : '';
+    setLast({ key, text });
+  }
+  return last.text;
+}
+
 export function CallVideos({ call, waiting }) {
   const inCall = call.status === 'connected';
+  const name = call.partnerName || 'Your partner';
+  const { video, audio, hold } = call.partnerMedia;
+  const away = hold ? 'hold' : video ? '' : 'camera';
+  const announcement = useAwayAnnouncement(inCall, away, name);
   return (
     <div className="video-container">
       <div className="video-wrapper">
         <video ref={call.remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
+        {inCall && away === 'hold' && (
+          <div className="media-overlay" data-testid="remote-on-hold">
+            <span className="media-avatar" aria-hidden="true"><PauseIcon fontSize="large" /></span>
+            <p className="media-title">{name} is on hold</p>
+            <p className="media-sub">They may be on another call or switched apps. Waiting for them to come back…</p>
+          </div>
+        )}
+        {inCall && away === 'camera' && (
+          <div className="media-overlay" data-testid="remote-camera-off">
+            <span className="media-avatar" aria-hidden="true">{name.charAt(0).toUpperCase()}</span>
+            <p className="media-title">{name} turned their camera off</p>
+          </div>
+        )}
+        {inCall && !audio && (
+          <span className="media-mic-off" role="img" aria-label={`${name} is muted`} data-testid="remote-mic-off">
+            <MicOffIcon fontSize="small" />
+          </span>
+        )}
+        <span className="visually-hidden" aria-live="polite">{announcement}</span>
         {inCall ? (
           <span
             className="partner-quality"
@@ -72,6 +111,12 @@ export function CallVideos({ call, waiting }) {
       </div>
       <div className="video-wrapper">
         <video ref={call.localVideo} autoPlay playsInline muted className="video local" data-testid="local-video" />
+        {!call.videoOn && (
+          <div className="media-overlay" data-testid="local-camera-off">
+            <VideocamOffIcon fontSize="large" aria-hidden="true" />
+            <p className="media-title">Your camera is off</p>
+          </div>
+        )}
         {call.cameraCount > 1 && (
           <IconButton
             className="switch-camera"

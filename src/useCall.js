@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 const MAX_RETRY_MS = 30000;
 const REPLACED_CLOSE_CODE = 4000;
+const MEDIA_ON = { video: true, audio: true, hold: false };
+const liveTrack = (t) => Boolean(t) && t.readyState === 'live' && !t.muted;
 const FRIEND_STATUSES = ['none', 'requested', 'incoming', 'friends'];
 const ERRORS = {
   'chat rate limit': 'Slow down: at most 2 messages a second.',
@@ -67,6 +69,11 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
   const [canAddFriend, setCanAddFriend] = useState(false); // both of you signed in
   const friendStatusRef = useRef('none');
   friendStatusRef.current = friendStatus;
+  const [partnerMedia, setPartnerMedia] = useState(MEDIA_ON); // what the partner said they send
+  const [remoteVideoMuted, setRemoteVideoMuted] = useState(false); // no frames arriving (older clients)
+  const [hidden, setHidden] = useState(() => document.visibilityState === 'hidden');
+  const [, setTrackTick] = useState(0); // re-render when a local track is muted, unmuted or ends
+  const mediaRef = useRef(MEDIA_ON);
   const [streak, setStreakState] = useState(null); // { count, best } for a signed-in user
   const streakRef = useRef(null);
 
@@ -85,6 +92,37 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
     localStream?.getAudioTracks().forEach((t) => { t.enabled = micOn; });
     localStream?.getVideoTracks().forEach((t) => { t.enabled = videoOn; });
   }, [localStream, micOn, videoOn]);
+
+  // Our camera/mic state as the partner sees it; hold = page hidden or the OS took a track (e.g. a phone call).
+  const camTrack = localStream?.getVideoTracks()[0];
+  const micTrack = localStream?.getAudioTracks()[0];
+  const tracks = localStream?.getTracks() ?? [];
+  const media = {
+    video: videoOn && liveTrack(camTrack),
+    audio: micOn && liveTrack(micTrack),
+    hold: hidden || tracks.some((t) => t.muted || t.readyState === 'ended'),
+  };
+  mediaRef.current = media;
+
+  useEffect(() => {
+    const onVisibility = () => setHidden(document.visibilityState === 'hidden');
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (!localStream) return undefined;
+    const bump = () => setTrackTick((n) => n + 1);
+    const list = localStream.getTracks();
+    const events = ['mute', 'unmute', 'ended'];
+    list.forEach((t) => events.forEach((e) => t.addEventListener(e, bump)));
+    return () => list.forEach((t) => events.forEach((e) => t.removeEventListener(e, bump)));
+  }, [localStream]);
+
+  // Tell the partner whenever it changes; matched sends it once for each new partner.
+  useEffect(() => {
+    if (pcRef.current) send({ type: 'mediaState', ...mediaRef.current });
+  }, [media.video, media.audio, media.hold]);
 
   useEffect(() => {
     const check = () => {
@@ -106,6 +144,8 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
     if (remoteVideo.current) remoteVideo.current.srcObject = null;
     setSharedTags([]);
     setPartnerQuality('Unknown');
+    setPartnerMedia(MEDIA_ON);
+    setRemoteVideoMuted(false);
     setPartnerName('');
     setFriendStatus('none');
     setCanAddFriend(false);
@@ -173,8 +213,12 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
     pcRef.current = pc;
     const stream = streamRef.current;
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-    pc.ontrack = ({ streams }) => {
+    pc.ontrack = ({ track, streams }) => {
       if (remoteVideo.current && streams[0]) remoteVideo.current.srcObject = streams[0];
+      if (track.kind !== 'video') return;
+      // Fallback for partners that never send mediaState: a muted remote track means no frames.
+      track.onmute = () => pcRef.current === pc && setRemoteVideoMuted(true);
+      track.onunmute = () => pcRef.current === pc && setRemoteVideoMuted(false);
     };
     pc.onicecandidate = ({ candidate }) => {
       if (candidate) send({ type: 'candidate', candidate });
@@ -261,6 +305,7 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
         setFriendStatus(FRIEND_STATUSES.includes(data.friendStatus) ? data.friendStatus : 'none');
         setStatus('connected');
         send({ type: 'networkQualityUpdate', quality: qualityRef.current });
+        send({ type: 'mediaState', ...mediaRef.current });
         if (data.role === 'caller') makeOffer(pc);
         break;
       }
@@ -275,6 +320,11 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
         break;
       case 'networkQualityUpdate':
         setPartnerQuality(data.quality);
+        break;
+      case 'mediaState':
+        if ([data.video, data.audio, data.hold].every((v) => typeof v === 'boolean')) {
+          setPartnerMedia({ video: data.video, audio: data.audio, hold: data.hold });
+        }
         break;
       case 'chat':
         addMessage('partner', data.text);
@@ -446,6 +496,7 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
     status, mediaError, micOn, setMicOn, videoOn, setVideoOn, cameraCount, sharedTags, activeUsers,
     partnerName, messages, chatText, setChatText, partnerQuality, retrySeconds, bannedUntil, notice, setNotice,
     streak, setStreak, friendStatus, canAddFriend,
+    partnerMedia: { ...partnerMedia, video: partnerMedia.video && !remoteVideoMuted },
     localVideo, remoteVideo, chatListRef,
     send, start, stop, leaveCall, sendChat, switchCamera,
     addFriend: () => send({ type: 'friendRequest' }),

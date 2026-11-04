@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — camera off and on hold (#44)
+
+- Calls now tell the partner when your camera or mic is off and when you are on hold (tab hidden, or the OS took the camera/mic, e.g. a phone call). The partner sees "… turned their camera off" with your initial, "… is on hold" with a pause icon, or a muted-mic badge instead of a black or frozen video, announced to screen readers; your own preview shows "Your camera is off". A remote video track with no frames counts as camera off for older clients.
+
 ## Unreleased — friends (#42)
 
 - Add friend in calls (random chat and rooms): when both people are signed in, the call controls show Add friend → Request sent, Accept friend when they asked first, and Friends ✓. The other person gets a "… sent you a friend request" notice. Signed-out users see a "Sign in to add friends" link in the chat header; nothing is shown for guests. Friend errors (rate limit, blocked, guest) get readable notices.

@@ -114,6 +114,57 @@
   border-radius: 50%;
 }
 
+/* Partner on hold or camera off, and our own camera off: covers the black frames in the same box. */
+.media-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background-color: #14152b;
+  color: #fff;
+  text-align: center;
+}
+
+.media-avatar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: #8f47ff;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.media-title {
+  margin: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.media-sub {
+  margin: 0;
+  max-width: 28ch;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.media-mic-off {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  padding: 6px;
+  border-radius: 50%;
+  color: #fff;
+  background-color: rgba(244, 67, 54, 0.9);
+}
+
 .status {
   margin: 0;
   text-align: center;
