@@ -168,13 +168,26 @@
   overflow: hidden;
 }
 
-.chat-partner {
-  margin: 0;
+.chat-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 0.75rem;
   padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid #ececec;
+}
+
+.chat-partner {
+  min-width: 0;
+  margin: 0;
   font-size: 0.9375rem;
   font-weight: 500;
-  border-bottom: 1px solid #ececec;
   overflow-wrap: anywhere;
+}
+
+.chat-sign-in {
+  font-size: 0.8125rem;
 }
 
 .chat-messages {

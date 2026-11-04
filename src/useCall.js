@@ -3,6 +3,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 const MAX_RETRY_MS = 30000;
 const REPLACED_CLOSE_CODE = 4000;
+const FRIEND_STATUSES = ['none', 'requested', 'incoming', 'friends'];
+const ERRORS = {
+  'chat rate limit': 'Slow down: at most 2 messages a second.',
+  'too many friend requests, try later': 'Too many friend requests. Try again later.',
+  'sign in to add friends': 'Sign in to add friends.',
+  'partner is a guest': 'Your partner is not signed in, so you cannot add them.',
+  blocked: 'You cannot add this person.',
+};
 
 function measureQuality() {
   const connection = navigator.connection;
@@ -55,6 +63,10 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
   const [retrySeconds, setRetrySeconds] = useState(0);
   const [bannedUntil, setBannedUntil] = useState(null);
   const [notice, setNotice] = useState('');
+  const [friendStatus, setFriendStatus] = useState('none'); // none | requested | incoming | friends
+  const [canAddFriend, setCanAddFriend] = useState(false); // both of you signed in
+  const friendStatusRef = useRef('none');
+  friendStatusRef.current = friendStatus;
   const [streak, setStreakState] = useState(null); // { count, best } for a signed-in user
   const streakRef = useRef(null);
 
@@ -95,6 +107,8 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
     setSharedTags([]);
     setPartnerQuality('Unknown');
     setPartnerName('');
+    setFriendStatus('none');
+    setCanAddFriend(false);
     setMessages([]);
     setChatText('');
   };
@@ -243,6 +257,8 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
         const pc = createPeer();
         setSharedTags(Array.isArray(data.sharedTags) ? data.sharedTags : []);
         setPartnerName(typeof data.partnerName === 'string' ? data.partnerName : 'Guest');
+        setCanAddFriend(data.canAddFriend === true);
+        setFriendStatus(FRIEND_STATUSES.includes(data.friendStatus) ? data.friendStatus : 'none');
         setStatus('connected');
         send({ type: 'networkQualityUpdate', quality: qualityRef.current });
         if (data.role === 'caller') makeOffer(pc);
@@ -270,6 +286,21 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
         closePeer();
         setStatus('searching');
         break;
+      case 'friendStatus':
+        if (FRIEND_STATUSES.includes(data.status)) setFriendStatus(data.status);
+        break;
+      case 'friendRequestReceived': {
+        const who = typeof data.name === 'string' && data.name ? data.name : 'Your partner';
+        // Both of you asked at once: the server accepts it, so you are friends.
+        if (friendStatusRef.current === 'requested') {
+          setFriendStatus('friends');
+          setNotice(`You and ${who} are now friends.`);
+        } else {
+          setFriendStatus('incoming');
+          setNotice(`${who} sent you a friend request. Accept it in Friends.`);
+        }
+        break;
+      }
       case 'streak': {
         if (!Number.isFinite(data.count)) break;
         if (data.count > (streakRef.current?.count ?? 0)) setNotice(`🔥 ${data.count}-day streak!`);
@@ -277,7 +308,7 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
         break;
       }
       case 'error':
-        setNotice(data.message === 'chat rate limit' ? 'Slow down: at most 2 messages a second.' : `Server error: ${data.message}`);
+        setNotice(ERRORS[data.message] || `Server error: ${data.message}`);
         break;
       default:
         break;
@@ -414,8 +445,9 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
   return {
     status, mediaError, micOn, setMicOn, videoOn, setVideoOn, cameraCount, sharedTags, activeUsers,
     partnerName, messages, chatText, setChatText, partnerQuality, retrySeconds, bannedUntil, notice, setNotice,
-    streak, setStreak,
+    streak, setStreak, friendStatus, canAddFriend,
     localVideo, remoteVideo, chatListRef,
     send, start, stop, leaveCall, sendChat, switchCamera,
+    addFriend: () => send({ type: 'friendRequest' }),
   };
 }

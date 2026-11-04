@@ -18,11 +18,15 @@ export default function Dashboard() {
   const { me, openBadges } = useApp();
   const [rooms, setRooms] = useState(null);
   const [error, setError] = useState('');
+  const [friends, setFriends] = useState(null);
 
   useEffect(() => {
     api('/rooms')
       .then((list) => setRooms(list.filter((r) => r.booked || r.isHost).sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt))))
       .catch((err) => setError(err.message));
+    api('/friends')
+      .then((d) => setFriends({ count: d.friends.length, incoming: d.incoming.length }))
+      .catch(() => setFriends({ error: true }));
   }, []);
 
   const badges = me?.badges || [];
@@ -102,6 +106,37 @@ export default function Dashboard() {
         </section>
       </div>
 
+      <div className="dash-grid">
+      <section className="app-card" aria-labelledby="dash-friends-title">
+        <div className="app-card-head">
+          <h2 id="dash-friends-title">Friends</h2>
+          <Button component={Link} to="/friends" size="small" data-testid="dash-all-friends">All friends</Button>
+        </div>
+        {friends?.error ? (
+          <p>Could not load your friends.</p>
+        ) : (
+          <>
+            <dl className="dash-friends">
+              <div data-testid="dash-friends-count">
+                <dt>Friends</dt>
+                <dd>{friends ? friends.count : '–'}</dd>
+              </div>
+              <div data-testid="dash-friends-incoming">
+                <dt>Pending requests</dt>
+                <dd>{friends ? friends.incoming : '–'}</dd>
+              </div>
+            </dl>
+            {friends?.incoming > 0 ? (
+              <Button component={Link} to="/friends?tab=requests" variant="contained" disableElevation className="dash-review" data-testid="dash-friends-review">
+                Review requests
+              </Button>
+            ) : (
+              <p className="dash-tip">Add friends from a video call when you&apos;re both signed in.</p>
+            )}
+          </>
+        )}
+      </section>
+
       <section className="app-card" aria-labelledby="dash-badges-title">
         <div className="app-card-head">
           <h2 id="dash-badges-title">Badges</h2>
@@ -116,6 +151,7 @@ export default function Dashboard() {
         </button>
         <p className="dash-tip">🔥 Have a video call of at least a minute every day to keep your streak going.</p>
       </section>
+      </div>
     </AppPage>
   );
 }

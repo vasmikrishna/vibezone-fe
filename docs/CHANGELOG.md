@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — friends (#42)
+
+- Add friend in calls (random chat and rooms): when both people are signed in, the call controls show Add friend → Request sent, Accept friend when they asked first, and Friends ✓. The other person gets a "… sent you a friend request" notice. Signed-out users see a "Sign in to add friends" link in the chat header; nothing is shown for guests. Friend errors (rate limit, blocked, guest) get readable notices.
+- Friends page `/friends` (signed in): Friends / Requests / Sent tabs with counts and `?tab=requests|sent`; cards with avatar, name, streak and "Friends since"; Remove (confirmed), Accept / Decline and Cancel update at once and roll back with a snackbar if the server refuses. Empty states explain how to add friends.
+- Sidebar: Friends in the Main group with an incoming-requests badge (refreshed on route change and every 60 s while visible); on phones the menu button shows the badge.
+- Dashboard: Friends card with friends and pending-request counts and a Review requests link.
+- `e2e/friends.mjs`: two signed-in users (token files in `TOKEN_A_FILE` / `TOKEN_B_FILE`) match, become friends and see each other on /friends; the friendship is removed afterwards.
+
 ## Unreleased — app shell and dashboard (#41)
 
 - New app layout (`src/AppLayout.jsx`) for /dashboard, /chat, /rooms, /rooms/:id, /profile and /admin/*: dark 256px sidebar on desktop (Main / Account / Admin groups, Badges count, user card menu with Profile, Privacy, Help, Back to website, Sign out) that collapses to a 72px icon rail (remembered); below 1024px a top bar with a menu drawer and a bottom tab bar. `/api/me` loads once and is shared. Replaces `AccountSidebar.jsx`.

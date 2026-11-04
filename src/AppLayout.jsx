@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import Badge from '@mui/material/Badge';
 import Button from '@mui/material/Button';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
@@ -27,6 +28,7 @@ import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import ChevronRight from '@mui/icons-material/ChevronRight';
 import HomeOutlined from '@mui/icons-material/HomeOutlined';
 import PersonOutline from '@mui/icons-material/PersonOutline';
+import PeopleAltOutlined from '@mui/icons-material/PeopleAltOutlined';
 import { api, getToken, clearToken } from './api';
 import { isIOS } from './Layout';
 import { usePageTitle } from './usePageTitle';
@@ -63,13 +65,19 @@ export function RequireAuth({ admin = false, children }) {
 // Tooltips only on the icon rail: an empty MUI Tooltip would blank the item's accessible name.
 const withTip = (collapsed, title, el) => (collapsed ? <Tooltip title={title} placement="right">{el}</Tooltip> : el);
 
-function NavItem({ to, label, Icon, id, collapsed, onClick, end }) {
+function NavItem({ to, label, Icon, id, collapsed, onClick, end, count = 0, countLabel }) {
   return withTip(
     collapsed,
-    label,
+    count > 0 ? `${label}, ${count} ${countLabel}` : label,
     <NavLink to={to} end={end} className="app-nav-item" onClick={onClick} data-testid={`app-nav-${id}`}>
       <Icon fontSize="small" aria-hidden="true" />
       <span className="app-nav-label">{label}</span>
+      {count > 0 && (
+        <>
+          <span className="visually-hidden">, {count} {countLabel}</span>
+          <span className="app-count" aria-hidden="true" data-testid={`app-nav-${id}-count`}>{count}</span>
+        </>
+      )}
     </NavLink>
   );
 }
@@ -87,7 +95,7 @@ function BadgesItem({ collapsed, earned, onClick }) {
 }
 
 function SidebarContents({ collapsed = false, onNavigate, onToggle }) {
-  const { me, openBadges, openUserMenu } = useApp();
+  const { me, openBadges, openUserMenu, friendRequests } = useApp();
   const signedIn = Boolean(getToken());
   const earned = me?.badges?.filter((b) => b.earned).length ?? 0;
   const item = (props) => <NavItem key={props.id} collapsed={collapsed} onClick={onNavigate} {...props} />;
@@ -96,6 +104,7 @@ function SidebarContents({ collapsed = false, onNavigate, onToggle }) {
       signedIn && { to: '/dashboard', label: 'Dashboard', Icon: SpaceDashboardOutlined, id: 'dashboard' },
       !isIOS && { to: '/chat', label: 'Video chat', Icon: VideocamOutlined, id: 'chat' },
       { to: '/rooms', label: 'Rooms', Icon: MeetingRoomOutlined, id: 'rooms' },
+      signedIn && { to: '/friends', label: 'Friends', Icon: PeopleAltOutlined, id: 'friends', count: friendRequests, countLabel: 'friend requests' },
     ]],
     signedIn && ['Account', [
       'badges',
@@ -169,12 +178,19 @@ function SidebarContents({ collapsed = false, onNavigate, onToggle }) {
 /** Page frame inside the app: sticky top bar with the title and actions, then the content. */
 export function AppPage({ title, actions, wide = false, children }) {
   usePageTitle(`${title} - Vibezone`);
-  const { me, openDrawer, openUserMenu } = useApp();
+  const { me, openDrawer, openUserMenu, friendRequests } = useApp();
   return (
     <>
       <header className="app-topbar">
-        <IconButton className="app-hamburger" onClick={openDrawer} aria-label="Open menu" data-testid="app-menu">
-          <MenuIcon />
+        <IconButton
+          className="app-hamburger"
+          onClick={openDrawer}
+          aria-label={friendRequests > 0 ? `Open menu, ${friendRequests} friend requests` : 'Open menu'}
+          data-testid="app-menu"
+        >
+          <Badge badgeContent={friendRequests} color="error" overlap="circular" data-testid="app-menu-badge">
+            <MenuIcon />
+          </Badge>
         </IconButton>
         <h1 className="app-title" data-testid="page-title">{title}</h1>
         <div className="app-actions">{actions}</div>
@@ -193,12 +209,35 @@ export function AppPage({ title, actions, wide = false, children }) {
 
 export default function AppLayout() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const token = getToken();
   const [me, setMe] = useState(token ? undefined : null);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [badgesOpen, setBadgesOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
+  const [friendRequests, setFriendRequests] = useState(0);
+
+  // Incoming friend requests for the sidebar and menu badges: on every route change and each minute while visible.
+  const refreshFriends = useCallback(() => {
+    if (!getToken()) return setFriendRequests(0);
+    api('/friends/count')
+      .then((d) => setFriendRequests(Number.isFinite(d?.incoming) ? d.incoming : 0))
+      .catch(() => { /* keep the last count; the badge is a hint */ });
+  }, []);
+  useEffect(() => {
+    refreshFriends();
+  }, [pathname, token, refreshFriends]);
+  useEffect(() => {
+    if (!token) return undefined;
+    const tick = () => document.visibilityState === 'visible' && refreshFriends();
+    const timer = setInterval(tick, 60000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [token, refreshFriends]);
 
   useEffect(() => {
     if (!token) return setMe(null);
@@ -229,6 +268,8 @@ export default function AppLayout() {
   const ctx = {
     me,
     setMe,
+    friendRequests,
+    refreshFriends,
     openDrawer: () => setDrawerOpen(true),
     openBadges: () => setBadgesOpen(true),
     openUserMenu: (e) => setMenuAnchor(e.currentTarget),

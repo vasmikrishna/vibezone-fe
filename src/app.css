@@ -227,3 +227,20 @@
 @media (min-width: 768px) {
   .admin-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 }
+
+/* Friends (src/Friends.jsx) and the dashboard card. */
+.friend-tabs { border-bottom: 1px solid var(--line); }
+.friend-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.app-card.friend-card { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 16px; }
+.friend-card .app-avatar { width: 44px; height: 44px; font-size: 1.0625rem; }
+.friend-text { flex: 1 1 160px; display: flex; flex-direction: column; min-width: 0; }
+.friend-text strong { font-weight: 600; overflow-wrap: anywhere; }
+.friend-text span { font-size: .8125rem; color: #6b6b85; }
+.friend-actions { display: flex; gap: 8px; margin-left: auto; }
+.friend-actions .MuiButton-root, .friend-empty .MuiButton-root, .dash-review.MuiButton-root { min-height: 40px; border-radius: 999px; }
+.friend-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.friend-empty .MuiButton-root { margin-top: 8px; }
+.dash-friends { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 12px; }
+.dash-friends dt { font-size: .8125rem; color: #6b6b85; }
+.dash-friends dd { margin: 4px 0 0; font-size: 1.5rem; font-weight: 600; color: #1f1f1f; }
+.app-card .dash-friends + .dash-tip { margin-top: 0; }

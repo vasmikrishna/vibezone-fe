@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -18,6 +19,8 @@ import VideocamOffIcon from '@mui/icons-material/VideocamOff';
 import CameraswitchIcon from '@mui/icons-material/Cameraswitch';
 import CallEndIcon from '@mui/icons-material/CallEnd';
 import SendIcon from '@mui/icons-material/Send';
+import PersonAddAlt from '@mui/icons-material/PersonAddAlt';
+import { getToken } from './api';
 import './video.css';
 
 const MAX_CHAT_LENGTH = 500;
@@ -112,6 +115,7 @@ export function CallControls({ call, idle, onHangUp, onReport, onBlock, children
       {children}
       {call.status === 'connected' && (
         <>
+          {call.canAddFriend && <FriendButton call={call} />}
           <Button variant="outlined" color="warning" onClick={onReport} data-testid="report">
             Report
           </Button>
@@ -124,13 +128,45 @@ export function CallControls({ call, idle, onHangUp, onReport, onBlock, children
   );
 }
 
+const FRIEND_BUTTONS = {
+  none: ['Add friend', false],
+  requested: ['Request sent', true],
+  incoming: ['Accept friend', false],
+  friends: ['Friends ✓', true],
+};
+
+/** Add friend during a call; only shown when both of you are signed in. */
+function FriendButton({ call }) {
+  const [label, disabled] = FRIEND_BUTTONS[call.friendStatus] || FRIEND_BUTTONS.none;
+  return (
+    <Button
+      variant={call.friendStatus === 'incoming' ? 'contained' : 'outlined'}
+      disableElevation
+      startIcon={call.friendStatus === 'none' ? <PersonAddAlt /> : null}
+      disabled={disabled}
+      onClick={call.addFriend}
+      data-testid="add-friend"
+    >
+      {label}
+    </Button>
+  );
+}
+
 export function ChatPanel({ call }) {
   const inCall = call.status === 'connected';
+  const { pathname } = useLocation();
   return (
     <aside className="chat-panel" aria-label="Text chat">
-      <h2 className="chat-partner" data-testid="partner-name">
-        {inCall ? call.partnerName : 'Chat'}
-      </h2>
+      <div className="chat-head">
+        <h2 className="chat-partner" data-testid="partner-name">
+          {inCall ? call.partnerName : 'Chat'}
+        </h2>
+        {inCall && !getToken() && (
+          <Link to={`/login?next=${encodeURIComponent(pathname)}`} className="chat-sign-in" data-testid="friend-sign-in">
+            Sign in to add friends
+          </Link>
+        )}
+      </div>
       <ul className="chat-messages" ref={call.chatListRef} aria-live="polite" data-testid="chat-messages">
         {call.messages.length === 0 && (
           <li className="chat-empty">{inCall ? 'Say hello.' : 'Messages appear here during a call.'}</li>
