@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Checkbox from '@mui/material/Checkbox';
@@ -7,7 +7,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Alert from '@mui/material/Alert';
 import { Capacitor } from '@capacitor/core';
 import { SiteLayout } from './Layout';
-import { api, getToken, setToken } from './api';
+import { api, getToken, setToken, safeNext } from './api';
 
 const PHONE = /^\+[1-9]\d{7,14}$/; // E.164, as the server checks
 const RESEND_SECONDS = 30;
@@ -57,6 +57,7 @@ function GoogleButton({ onCredential, onError }) {
 
 export default function Login() {
   const navigate = useNavigate();
+  const next = safeNext(useSearchParams()[0].get('next'));
   const [country, setCountry] = useState('+91');
   const [number, setNumber] = useState('');
   const [terms, setTerms] = useState(false);
@@ -72,13 +73,13 @@ export default function Login() {
     return () => clearTimeout(timer);
   }, [wait]);
 
-  if (getToken()) return <Navigate to="/rooms" replace />;
+  if (getToken()) return <Navigate to={next} replace />;
 
   const phone = `${country.trim()}${number.replace(/[\s-]/g, '')}`;
 
   const finish = (token, user) => {
     setToken(token);
-    navigate(user.adult && user.name ? '/rooms' : '/profile', { replace: true });
+    navigate(user.adult && user.name ? next : '/profile', { replace: true });
   };
 
   const sendCode = async (e) => {

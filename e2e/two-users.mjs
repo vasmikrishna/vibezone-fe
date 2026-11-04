@@ -107,7 +107,11 @@ await site.goto(home);
 assert.ok((await site.title()).includes('Live video chat'));
 assert.equal(await site.getByRole('heading', { level: 1 }).count(), 1);
 assert.ok(await site.evaluate(() => document.documentElement.scrollWidth <= 375), 'home: no horizontal scroll at 375px');
-for (const t of ['nav-about', 'nav-contact', 'footer-terms']) await site.getByTestId(t).click();
+for (const t of ['drawer-about', 'drawer-contact']) {
+  await site.getByTestId('nav-menu').click(); // phones: the nav links live in the menu drawer
+  await site.getByTestId(t).click();
+}
+await site.getByTestId('footer-terms').click();
 await site.goto(home);
 await site.getByTestId('hero-start').click();
 await site.waitForURL('**/chat');

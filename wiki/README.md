@@ -5,3 +5,4 @@
 - [Feature: marketing site](features/site.md)
 - [Feature: accounts and private rooms](features/rooms.md)
 - [Feature: account sidebar and badges](features/account.md)
+- [Feature: admin console](features/admin.md)

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
@@ -8,35 +8,22 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
-import { SiteLayout } from './Layout';
-import BadgesDialog, { BadgeIcon } from './BadgesDialog';
-import { api, getToken, clearToken } from './api';
+import { AppPage, useApp } from './AppLayout';
+import { BadgeIcon } from './BadgesDialog';
+import { api, clearToken } from './api';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function Profile() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [name, setName] = useState('');
+  const { me: user, setMe: setUser, openBadges } = useApp();
+  const [editedName, setName] = useState(null);
+  const name = editedName ?? user?.name ?? '';
   const [dob, setDob] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [badgesOpen, setBadgesOpen] = useState(false);
-  const token = getToken();
-
-  useEffect(() => {
-    if (!token) return;
-    api('/me')
-      .then((me) => {
-        setUser(me);
-        setName(me.name);
-      })
-      .catch((err) => (err.status === 401 ? navigate('/login', { replace: true }) : setError(err.message)));
-  }, [token, navigate]);
-
-  if (!token) return <Navigate to="/login" replace />;
 
   const save = async (e) => {
     e.preventDefault();
@@ -65,6 +52,7 @@ export default function Profile() {
 
   const signOut = () => {
     clearToken();
+    setUser(null);
     navigate('/login', { replace: true });
   };
 
@@ -82,9 +70,8 @@ export default function Profile() {
   };
 
   return (
-    <SiteLayout title="Profile - Vibezone" account>
-      <section className="section form-page">
-        <h1>Your profile</h1>
+    <AppPage title="Profile & settings">
+      <section className="form-page profile-page">
         {user && (
           <form className="form" onSubmit={save} noValidate>
             {user.phone ? (
@@ -107,7 +94,7 @@ export default function Profile() {
                   ? user.badges.filter((b) => b.earned).map((b) => <BadgeIcon key={b.id} id={b.id} title={b.name} />)
                   : <p>No badges yet</p>}
               </div>
-              <Button onClick={() => setBadgesOpen(true)} data-testid="profile-badges">See all badges</Button>
+              <Button onClick={openBadges} data-testid="profile-badges">See all badges</Button>
             </section>
             <TextField
               label="Name shown to others"
@@ -147,7 +134,6 @@ export default function Profile() {
         </div>
       </section>
 
-      <BadgesDialog open={badgesOpen} onClose={() => setBadgesOpen(false)} badges={user?.badges} />
       <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)} aria-labelledby="delete-title" aria-describedby="delete-text">
         <DialogTitle id="delete-title">Delete your account?</DialogTitle>
         <DialogContent>
@@ -162,6 +148,6 @@ export default function Profile() {
           </Button>
         </DialogActions>
       </Dialog>
-    </SiteLayout>
+    </AppPage>
   );
 }

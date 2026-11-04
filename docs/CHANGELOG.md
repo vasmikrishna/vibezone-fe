@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased — friends (#42)
+
+- Add friend in calls (random chat and rooms): when both people are signed in, the call controls show Add friend → Request sent, Accept friend when they asked first, and Friends ✓. The other person gets a "… sent you a friend request" notice. Signed-out users see a "Sign in to add friends" link in the chat header; nothing is shown for guests. Friend errors (rate limit, blocked, guest) get readable notices.
+- Friends page `/friends` (signed in): Friends / Requests / Sent tabs with counts and `?tab=requests|sent`; cards with avatar, name, streak and "Friends since"; Remove (confirmed), Accept / Decline and Cancel update at once and roll back with a snackbar if the server refuses. Empty states explain how to add friends.
+- Sidebar: Friends in the Main group with an incoming-requests badge (refreshed on route change and every 60 s while visible); on phones the menu button shows the badge.
+- Dashboard: Friends card with friends and pending-request counts and a Review requests link.
+- `e2e/friends.mjs`: two signed-in users (token files in `TOKEN_A_FILE` / `TOKEN_B_FILE`) match, become friends and see each other on /friends; the friendship is removed afterwards.
+
+## Unreleased — app shell and dashboard (#41)
+
+- New app layout (`src/AppLayout.jsx`) for /dashboard, /chat, /rooms, /rooms/:id, /profile and /admin/*: dark 256px sidebar on desktop (Main / Account / Admin groups, Badges count, user card menu with Profile, Privacy, Help, Back to website, Sign out) that collapses to a 72px icon rail (remembered); below 1024px a top bar with a menu drawer and a bottom tab bar. `/api/me` loads once and is shared. Replaces `AccountSidebar.jsx`.
+- New Dashboard (`src/Dashboard.jsx`): greeting, streak / best streak / calls / badges stats, Start a video chat card, your upcoming rooms, badges strip and a date-of-birth banner for users who have not added it.
+- Video chat, Rooms, a room and Profile render inside the app layout with a page title; VideoPage's logo header is now a compact name / key words / Connect toolbar, and on phones the videos fill the screen between the top bar and the tabs.
+- Marketing header: phones get a menu drawer instead of a wrapped row of links; signed-in visitors see "Open app" and their avatar. Login honours a same-site `?next=` path and defaults to /dashboard; signed-out visits to /dashboard, /profile, /rooms and /admin go to `/login?next=…`.
+- Admin nav for admins (users in the server's `ADMIN_EMAILS`); everyone else is sent to /dashboard.
+- Admin console (`src/admin/`): Overview with KPI cards, a 14-day calls / signups chart, latest open reports and 30 s auto-refresh; Reports with status tabs and a review drawer (chat transcript, Resolve / Dismiss / Reopen, Ban reported then Mark resolved); Users with debounced search, status chips and a details drawer with Ban / Lift ban; Bans with Lift ban and a ban-by-id form; Rooms with status tabs, Live chip and Cancel room. Bans, lifts and cancels are confirmed; results and API errors show in a snackbar.
+
 ## Unreleased — account sidebar and badges (#39)
 
 - Signed-in account sidebar (`src/AccountSidebar.jsx`) on Profile, Rooms and, from 900px wide, beside video chat: letter avatar, name, streak, phone or email, call count, and links to Video chat (not on iOS), Rooms, Profile, Privacy and Security, Badges and Sign out. Below 900px it is a compact block with a scrollable row of chips.

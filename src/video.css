@@ -1,43 +1,13 @@
-/* Signed-in desktop: account sidebar on the left of the call page. */
-.video-shell {
-  display: flex;
-  gap: 1.5rem;
-  align-items: stretch;
-}
-
-.video-shell > .account-sidebar {
-  display: none;
-}
-
 .video-page {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
   width: 100%;
-  max-width: 1120px;
-  margin: 0 auto;
 }
 
-/* Phone: logo and live count on the first row, then name, key words and Connect. */
-.top-bar {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    'logo info'
-    'fields fields';
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-}
-
-.top-bar .logo {
-  grid-area: logo;
-  height: 2.25rem;
-}
-
-.top-fields {
-  grid-area: fields;
+.call-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: start;
@@ -53,8 +23,8 @@
   font: inherit;
   font-size: 0.875rem;
   color: inherit;
-  background-color: #f7f7f7;
-  border: 1px solid transparent;
+  background-color: #fff;
+  border: 1px solid #e7e7f0;
   border-radius: 999px;
   outline: none;
 }
@@ -68,14 +38,6 @@
   min-height: 44px;
   border-radius: 999px;
   box-shadow: none;
-}
-
-.top-bar-info {
-  grid-area: info;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 0.875rem;
 }
 
 .active-users {
@@ -200,18 +162,32 @@
   flex-direction: column;
   height: 360px;
   min-width: 0;
-  background-color: #f7f7f7;
+  background-color: #fff;
+  border: 1px solid #e7e7f0;
   border-radius: 12px;
   overflow: hidden;
 }
 
-.chat-partner {
-  margin: 0;
+.chat-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 0.75rem;
   padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid #ececec;
+}
+
+.chat-partner {
+  min-width: 0;
+  margin: 0;
   font-size: 0.9375rem;
   font-weight: 500;
-  border-bottom: 1px solid #ececec;
   overflow-wrap: anywhere;
+}
+
+.chat-sign-in {
+  font-size: 0.8125rem;
 }
 
 .chat-messages {
@@ -270,8 +246,8 @@
   font: inherit;
   font-size: 0.875rem;
   color: inherit;
-  background-color: #f7f7f7;
-  border: 1px solid transparent;
+  background-color: #fff;
+  border: 1px solid #e7e7f0;
   border-radius: 999px;
   outline: none;
 }
@@ -301,30 +277,8 @@
   opacity: 0.8;
 }
 
-.footer {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  font-size: 0.875rem;
-}
-
 @media (min-width: 900px) {
-  .video-shell > .account-sidebar {
-    display: flex;
-    flex: 0 0 260px;
-  }
-
-  .top-bar {
-    grid-template-columns: auto 1fr auto;
-    grid-template-areas: 'logo fields info';
-    gap: 1.5rem;
-  }
-
-  .top-bar .logo {
-    height: 3rem;
-  }
-
-  .top-fields {
+  .call-toolbar {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
     gap: 1rem;
   }
@@ -354,24 +308,14 @@
 .room-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
   min-width: 0;
 }
 
-.room-bar .logo {
-  height: 2.25rem;
-  display: block;
-}
-
-.room-title {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.room-bar .MuiButton-root {
+  min-height: 44px;
+  border-radius: 999px;
 }
 
 .room-queue h2 {
@@ -387,7 +331,6 @@
 }
 
 .streak-chip {
-  margin-top: 0.25rem;
   padding: 0.125rem 0.625rem;
   font-weight: 600;
   color: #6a2fd0;
@@ -396,6 +339,18 @@
 }
 
 .streak-link {
-  margin-top: 0.25rem;
   font-size: 0.75rem;
+}
+
+/* Phones and tablets: the videos fill the space between the app top bar and the bottom tabs. */
+@media (max-width: 1023.98px) {
+  .video-container {
+    height: max(320px, calc(100dvh - 56px - 64px - 210px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  }
+
+  .video-container .video-wrapper {
+    flex: 1 1 0;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
 }

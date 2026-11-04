@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
@@ -8,8 +8,8 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
-import { SiteLayout } from './Layout';
-import { api, getToken, formatDate } from './api';
+import { AppPage, useApp } from './AppLayout';
+import { api, formatDate } from './api';
 
 const EARLY_MS = 10 * 60 * 1000; // rooms open 10 minutes before they start
 const EMPTY = { name: '', description: '', startsAt: '', durationMin: '60', interactionMin: '10', tickets: '10' };
@@ -114,13 +114,12 @@ function CreateRoomDialog({ open, onClose, onCreated }) {
 
 export default function Rooms() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { me: user } = useApp();
   const [rooms, setRooms] = useState(null);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [cancelling, setCancelling] = useState(null);
   const [now, setNow] = useState(Date.now());
-  const token = getToken();
 
   const fail = useCallback(
     (err) => (err.status === 401 ? navigate('/login', { replace: true }) : setError(err.message)),
@@ -129,14 +128,10 @@ export default function Rooms() {
   const load = useCallback(() => api('/rooms').then(setRooms).catch(fail), [fail]);
 
   useEffect(() => {
-    if (!token) return undefined;
-    api('/me').then(setUser).catch(fail);
     load();
     const timer = setInterval(() => setNow(Date.now()), 15000);
     return () => clearInterval(timer);
-  }, [token, load, fail]);
-
-  if (!token) return <Navigate to="/login" replace />;
+  }, [load]);
 
   const act = async (path, method) => {
     setError('');
@@ -152,18 +147,16 @@ export default function Rooms() {
   const adult = Boolean(user?.adult);
 
   return (
-    <SiteLayout title="Rooms - Vibezone" account>
-      <section className="section">
-        <div className="rooms-head">
-          <h1>Private rooms</h1>
-          <div className="form-row">
-            <Button component={Link} to="/profile" data-testid="rooms-profile">Profile</Button>
-            <Button variant="contained" disableElevation disabled={!adult} onClick={() => setCreating(true)} data-testid="rooms-create">
-              Create room
-            </Button>
-          </div>
-        </div>
-        <p>
+    <AppPage
+      title="Rooms"
+      actions={
+        <Button variant="contained" disableElevation disabled={!adult} onClick={() => setCreating(true)} className="app-action-button" data-testid="rooms-create">
+          Create room
+        </Button>
+      }
+    >
+      <section className="rooms-page">
+        <p className="app-lead">
           A host talks one-to-one with each ticket holder in turn. Rooms open 10 minutes before they start.
         </p>
         {user && !adult && (
@@ -256,6 +249,6 @@ export default function Rooms() {
           </Button>
         </DialogActions>
       </Dialog>
-    </SiteLayout>
+    </AppPage>
   );
 }
