@@ -7,7 +7,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import { useCall } from './useCall';
-import { MediaError, CallVideos, CallControls, ChatPanel, ReportDialog, Notice } from './CallView';
+import { MediaError, CallVideos, CallControls, StageState, ChatPanel, ReportDialog, Notice } from './CallView';
 import { api, getToken, formatDate } from './api';
 import { AppPage } from './AppLayout';
 import ArrowBack from '@mui/icons-material/ArrowBack';
@@ -98,7 +98,8 @@ export default function RoomPage() {
   const isHost = state ? state.role === 'host' : Boolean(room?.isHost);
   const queue = state?.queue || [];
   const started = room ? now >= new Date(room.startsAt).getTime() : true;
-  const timeLeft = inCall && sessionEndsAt ? ` · ${countdown(new Date(sessionEndsAt).getTime() - now)} left` : '';
+  const left = inCall && sessionEndsAt ? `${countdown(new Date(sessionEndsAt).getTime() - now)} left` : '';
+  const timeLeft = left && ` · ${left}`;
 
   const waitingText = isHost
     ? !started
@@ -131,7 +132,7 @@ export default function RoomPage() {
 
   return (
     <AppPage title={title} wide>
-    <div className="video-page">
+    <div className={idle ? 'video-page room-page' : 'video-page room-page immersive'}>
       <div className="room-bar">
         <Button component={Link} to="/rooms" startIcon={<ArrowBack />} data-testid="room-back">All rooms</Button>
         <Button
@@ -146,50 +147,51 @@ export default function RoomPage() {
         </Button>
       </div>
 
-      <div className="call-layout">
-        <section className="call-column" aria-label="Video call">
-          <CallVideos call={call} waiting={!idle} />
+      <div className={inCall ? 'call-layout in-call' : 'call-layout'}>
+        <CallVideos
+          call={call}
+          extra={left}
+          center={<StageState pulse={!idle} title={idle ? (closed || 'Ready to join?') : statusText} sub={idle && !closed ? 'Press Join room to turn on your camera and enter.' : ''} />}
+        />
+        <p className="visually-hidden" role="status" data-testid="status">{statusText}</p>
 
-          <p className="status" role="status" data-testid="status">{statusText}</p>
-
-          <CallControls
-            call={call}
-            idle={idle}
-            onHangUp={call.stop}
-            onReport={() => setReportOpen(true)}
-            onBlock={() => leaveWith({ type: 'block' }, `Blocked. ${removed}`)}
-          >
-            {isHost && !idle && (
-              <>
-                <Button
-                  variant="contained"
-                  disableElevation
-                  disabled={!started || (!inCall && queue.length === 0)}
-                  onClick={() => call.send({ type: 'roomNext' })}
-                  data-testid="room-next"
-                >
-                  Next
-                </Button>
-                <Button variant="outlined" color="error" onClick={() => setConfirmEnd(true)} data-testid="room-end">
-                  End room
-                </Button>
-              </>
-            )}
-          </CallControls>
-
+        <CallControls
+          call={call}
+          idle={idle}
+          onHangUp={call.stop}
+          onReport={() => setReportOpen(true)}
+          onBlock={() => leaveWith({ type: 'block' }, `Blocked. ${removed}`)}
+        >
           {isHost && !idle && (
-            <section className="room-queue" aria-labelledby="queue-title">
-              <h2 id="queue-title">Queue</h2>
-              {queue.length === 0 ? (
-                <p>Nobody is waiting.</p>
-              ) : (
-                <ol data-testid="room-queue">
-                  {queue.map((q) => <li key={q.userId}>{q.name}</li>)}
-                </ol>
-              )}
-            </section>
+            <>
+              <Button
+                variant="contained"
+                disableElevation
+                disabled={!started || (!inCall && queue.length === 0)}
+                onClick={() => call.send({ type: 'roomNext' })}
+                data-testid="room-next"
+              >
+                Next
+              </Button>
+              <Button variant="outlined" color="error" onClick={() => setConfirmEnd(true)} data-testid="room-end">
+                End room
+              </Button>
+            </>
           )}
-        </section>
+        </CallControls>
+
+        {isHost && !idle && (
+          <section className="room-queue" aria-labelledby="queue-title">
+            <h2 id="queue-title">Queue</h2>
+            {queue.length === 0 ? (
+              <p>Nobody is waiting.</p>
+            ) : (
+              <ol data-testid="room-queue">
+                {queue.map((q) => <li key={q.userId}>{q.name}</li>)}
+              </ol>
+            )}
+          </section>
+        )}
 
         <ChatPanel call={call} />
       </div>

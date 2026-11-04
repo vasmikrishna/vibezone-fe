@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — call stage and overlay chat (#46)
+
+- Video chat and rooms now use one dark video stage: the partner fills it (16:9 on desktop, full height on phones) and your own camera is a mirrored picture-in-picture window (bottom-right on desktop, top-right on phones) with the camera-switch button and "Your camera is off" overlay.
+- Camera preview: the chat page opens your camera after the consent screen (`useCall({ preview: true })` / `preview()`), and Connect reuses it. Stop still releases the camera; the self-view then offers "Turn on camera". If the camera can't start, the existing camera error screen still appears, and its "Try again" now turns the camera back on without connecting.
+- The stage always shows one clear state: "Ready when you are" with the Connect button, "Looking for someone…" with a pulse ring, the online count and Stop, "They left. Finding someone new…" after a partner leaves, "Connection lost / Reconnecting in Ns…", or the ban text. During a call a top-left pill shows the partner name, shared tags, the network dot and a muted-mic badge. The `status` element is now visually hidden with unchanged wording.
+- Call controls are round icon buttons with tooltips (mic, camera, hang up/Stop, Skip, Add friend, Report, Block). On desktop they sit in a toolbar under the stage. On phones they float at the bottom of the stage, and Add friend shows as an icon only, with its label kept in the button text. In random chat, the `start-stop` button is the Connect button on the stage while idle and the red hang-up button once you connect.
+- Phones/tablets (< 1024px): the stage fills the screen between the top bar and the bottom tabs. The tabs are hidden while searching or in a call. Chat messages float over the bottom-left of the video Instagram-Live style ("Name: text" pills, faded top, scrolling inside a box at most 40% of the stage's height), and the "Say something…" input sits above the controls. The page itself never scrolls. Name and key words move to a sheet opened by a tune button on the stage. Desktop keeps them in a row above the stage, with the chat panel on the right.
+- Rooms: same stage. The status, queue position and closed messages show in the stage centre; the countdown appears in the partner pill. On phones the host's queue floats over the stage.
+- `e2e/two-users.mjs`: opens the settings sheet (`settings-toggle`) before filling `name-input` at 375px, then closes it.
+
+## Unreleased — camera off and on hold (#44)
+
+- Calls now tell the partner when your camera or mic is off and when you are on hold (tab hidden, or the OS took the camera/mic, e.g. a phone call). The partner sees "… turned their camera off" with your initial, "… is on hold" with a pause icon, or a muted-mic badge instead of a black or frozen video, announced to screen readers; your own preview shows "Your camera is off". A remote video track with no frames counts as camera off for older clients.
+
 ## Unreleased — friends (#42)
 
 - Add friend in calls (random chat and rooms): when both people are signed in, the call controls show Add friend → Request sent, Accept friend when they asked first, and Friends ✓. The other person gets a "… sent you a friend request" notice. Signed-out users see a "Sign in to add friends" link in the chat header; nothing is shown for guests. Friend errors (rate limit, blocked, guest) get readable notices.

@@ -1,4 +1,9 @@
+/* Video chat and rooms: one dark stage with the partner, our camera in a corner, controls and chat around it. */
 .video-page {
+  --stage-bg: linear-gradient(160deg, #0f1022 0%, #1a1b3a 100%);
+  --glass: rgba(15, 16, 34, 0.55);
+  --glass-line: rgba(255, 255, 255, 0.16);
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -7,12 +12,17 @@
   width: 100%;
 }
 
-.call-toolbar {
+/* Name and key words: a row above the stage on desktop, a sheet opened from the stage on phones. */
+.call-settings {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
   align-items: start;
-  gap: 0.5rem;
+  gap: 0.75rem;
   min-width: 0;
+}
+
+.call-settings .hint {
+  grid-column: 1 / -1;
 }
 
 .name-input {
@@ -33,6 +43,80 @@
   border-color: #8f47ff;
 }
 
+.active-users {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.call-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* The stage. */
+.stage {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  background: var(--stage-bg);
+  border-radius: 20px;
+  box-shadow: 0 12px 40px rgba(20, 21, 43, 0.18);
+}
+
+.stage > .video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.stage.in-call > .video {
+  opacity: 1;
+}
+
+.stage-state {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+  animation: stage-in 0.3s ease both;
+}
+
+.stage-title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.stage-sub {
+  margin: 0 0 0.75rem;
+  max-width: 34ch;
+  font-size: 0.9375rem;
+  color: rgba(255, 255, 255, 0.72);
+}
+
 .start-button.MuiButton-root {
   min-width: 96px;
   min-height: 44px;
@@ -40,131 +124,344 @@
   box-shadow: none;
 }
 
-.active-users {
+.stage .start-button.MuiButton-root {
+  min-height: 52px;
+  padding-inline: 2.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #a46bff, #7a35e8);
+  box-shadow: 0 8px 28px rgba(143, 71, 255, 0.45);
+}
+
+.stage .start-button.MuiButton-root:hover {
+  background: linear-gradient(135deg, #9558f5, #6a2fd0);
+}
+
+.stage-stop.MuiButton-root {
+  min-height: 40px;
+  padding-inline: 1.5rem;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+}
+
+.stage-stop.MuiButton-root:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Searching: a soft pulse ring. */
+.stage-pulse {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 0.5rem;
+}
+
+.stage-pulse > span {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #8f47ff;
+  box-shadow: 0 0 24px rgba(143, 71, 255, 0.8);
+}
+
+.stage-pulse::before,
+.stage-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(164, 107, 255, 0.7);
+  border-radius: 50%;
+  animation: stage-pulse 2s ease-out infinite;
+}
+
+.stage-pulse::after {
+  animation-delay: 1s;
+}
+
+@keyframes stage-pulse {
+  from { transform: scale(0.3); opacity: 1; }
+  to { transform: scale(1); opacity: 0; }
+}
+
+@keyframes stage-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Partner name, shared tags and network dot. */
+.stage-pill {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  max-width: calc(100% - 24px);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
 }
 
-.call-layout {
+.stage-pill-text {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
   min-width: 0;
+  line-height: 1.25;
 }
 
-.call-column {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.video-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  width: 100%;
-}
-
-.video-wrapper {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  background-color: #000;
-  border-radius: 12px;
+.stage-pill-text > * {
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.video {
+.stage-pill-text > span {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.partner-quality {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+
+.media-mic-off {
+  flex: none;
+  display: flex;
+  padding: 4px;
+  font-size: 0.875rem;
+  border-radius: 50%;
+  color: #fff;
+  background-color: rgba(244, 67, 54, 0.9);
+}
+
+.stage-corner {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+}
+
+.stage-tune.MuiIconButton-root {
+  width: 44px;
+  height: 44px;
+  color: #fff;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  backdrop-filter: blur(10px);
+}
+
+.stage-tune.MuiIconButton-root:hover {
+  background: rgba(15, 16, 34, 0.75);
+}
+
+/* Partner on hold or camera off, and our own camera off: covers the black frames in the same box. */
+.media-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--stage-bg, #14152b);
+  color: #fff;
+  text-align: center;
+}
+
+.media-avatar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: #8f47ff;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.media-title {
+  margin: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.media-sub {
+  margin: 0;
+  max-width: 28ch;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+/* Our camera: a picture-in-picture window, mirrored like a mirror (the partner sees it unflipped). */
+.self-view {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 4;
+  width: 22%;
+  min-width: 120px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #000;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.self-view .video {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
 
-/* Mirror only the local preview, like a mirror; the partner sees the unflipped image. */
 .video.local {
   transform: scaleX(-1);
 }
 
-.loader {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #000;
+.self-view .media-overlay {
+  gap: 0.375rem;
+  padding: 0.5rem;
+  border-radius: inherit;
+}
+
+.self-view .media-title {
+  font-size: 0.75rem;
+}
+
+.self-view .MuiButton-root {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  border-radius: 999px;
+  text-transform: none;
 }
 
 .switch-camera.MuiIconButton-root {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  right: 6px;
+  bottom: 6px;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
   color: #fff;
+  background-color: rgba(15, 16, 34, 0.6);
+}
+
+.switch-camera.MuiIconButton-root:hover {
   background-color: rgba(143, 71, 255, 0.85);
 }
 
-.partner-quality {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.status {
-  margin: 0;
-  text-align: center;
-  font-weight: 500;
-}
-
+/* Call controls: round icon buttons; a toolbar under the stage on desktop, a floating bar on phones. */
 .controls {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
+  min-width: 0;
 }
 
-.controls .MuiIconButton-root,
-.controls .MuiButton-root {
-  min-width: 44px;
-  min-height: 44px;
+.tip {
+  display: inline-flex;
+}
+
+.controls .round.MuiIconButton-root {
+  width: 48px;
+  height: 48px;
+  color: #3b3b55;
+  background: #fff;
+  border: 1px solid #e7e7f0;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.controls .round.MuiIconButton-root:hover {
+  background: #f3ecff;
+}
+
+.controls .round.off.MuiIconButton-root,
+.controls .hang-up.MuiIconButton-root {
+  color: #fff;
+  background: #f44336;
+  border-color: transparent;
+}
+
+.controls .round.off.MuiIconButton-root:hover,
+.controls .hang-up.MuiIconButton-root:hover {
+  background: #d32f2f;
+}
+
+.controls .report-button.MuiIconButton-root {
+  color: #c77700;
+}
+
+.controls .block-button.MuiIconButton-root {
+  color: #d32f2f;
 }
 
 .controls .MuiButton-root {
+  min-width: 48px;
+  min-height: 48px;
   border-radius: 999px;
   box-shadow: none;
 }
 
-.hang-up.MuiIconButton-root {
+.skip-button.MuiButton-root {
+  padding-inline: 1.75rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #a46bff, #7a35e8);
+}
+
+.skip-button.MuiButton-root.Mui-disabled {
+  color: #9b9bb5;
+  background: #ececf4;
+}
+
+.friend-button.MuiButton-root {
+  gap: 0.375rem;
+  padding-inline: 1rem;
+  color: #6a2fd0;
+  background: #f3ecff;
+}
+
+.friend-button.MuiButton-root:hover {
+  background: #e8dcff;
+}
+
+.friend-button.incoming.MuiButton-root {
   color: #fff;
-  background-color: #f44336;
+  background: #8f47ff;
 }
 
-.hang-up.MuiIconButton-root:hover {
-  background-color: #d32f2f;
+.friend-button.MuiButton-root.Mui-disabled {
+  color: #6a2fd0;
+  background: #f3ecff;
+  opacity: 0.75;
 }
 
-.hang-up.MuiIconButton-root.Mui-disabled {
-  color: #fff;
-  background-color: #f4a09a;
-}
-
-.icon {
-  color: #8f47ff;
-}
-
+/* Chat: a side panel on desktop. */
 .chat-panel {
   display: flex;
   flex-direction: column;
-  height: 360px;
   min-width: 0;
+  min-height: 0;
   background-color: #fff;
   border: 1px solid #e7e7f0;
-  border-radius: 12px;
+  border-radius: 20px;
   overflow: hidden;
 }
 
@@ -182,7 +479,7 @@
   min-width: 0;
   margin: 0;
   font-size: 0.9375rem;
-  font-weight: 500;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
@@ -194,6 +491,7 @@
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   margin: 0;
   padding: 1rem 1.25rem;
   list-style: none;
@@ -212,21 +510,31 @@
   max-width: 80%;
   padding: 0.5rem 0.875rem;
   font-size: 0.875rem;
-  border-radius: 12px;
+  border-radius: 16px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  animation: stage-in 0.2s ease both;
 }
 
 .chat-message.partner {
   align-self: flex-start;
-  background-color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  background-color: #f3f3f8;
 }
 
 .chat-message.me {
   align-self: flex-end;
   color: #fff;
   background-color: #8f47ff;
+}
+
+/* The sender is read out on desktop and shown on phones ("Name: text"). */
+.chat-from {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .chat-form {
@@ -246,7 +554,7 @@
   font: inherit;
   font-size: 0.875rem;
   color: inherit;
-  background-color: #fff;
+  background-color: #f7f7fb;
   border: 1px solid #e7e7f0;
   border-radius: 999px;
   outline: none;
@@ -271,40 +579,7 @@
   white-space: nowrap;
 }
 
-.hint {
-  margin: 0;
-  font-size: 0.8rem;
-  opacity: 0.8;
-}
-
-@media (min-width: 900px) {
-  .call-toolbar {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
-    gap: 1rem;
-  }
-
-  .start-button.MuiButton-root {
-    min-width: 120px;
-  }
-
-  .call-layout {
-    display: grid;
-    grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
-    gap: 2rem;
-  }
-
-  .video-wrapper {
-    aspect-ratio: 16 / 10;
-  }
-
-  /* The chat stretches to the call column's height and scrolls inside instead of growing the row. */
-  .chat-panel {
-    height: auto;
-    min-height: 420px;
-    contain: size;
-  }
-}
-
+/* Rooms. */
 .room-bar {
   display: flex;
   align-items: center;
@@ -342,15 +617,359 @@
   font-size: 0.75rem;
 }
 
-/* Phones and tablets: the videos fill the space between the app top bar and the bottom tabs. */
-@media (max-width: 1023.98px) {
-  .video-container {
-    height: max(320px, calc(100dvh - 56px - 64px - 210px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+/* Desktop: stage and toolbar on the left, chat the same height on the right. */
+@media (min-width: 1024px) {
+  .call-settings {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    gap: 1rem;
   }
 
-  .video-container .video-wrapper {
-    flex: 1 1 0;
+  .call-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+    column-gap: 1.25rem;
+  }
+
+  .stage {
+    grid-column: 1;
+    grid-row: 1;
+    aspect-ratio: 16 / 9;
+    min-height: 340px;
+    max-height: calc(100dvh - 280px);
+  }
+
+  .stage-title {
+    font-size: 1.75rem;
+  }
+
+  .controls {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .room-queue {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  /* The chat stretches to the stage + toolbar height and scrolls inside instead of growing the row. */
+  .chat-panel {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    contain: size;
+  }
+
+  .stage-tune.MuiIconButton-root {
+    display: none;
+  }
+}
+
+/* Phones and tablets: the stage fills the screen and the chat floats over the video, Instagram-Live style. */
+@media (max-width: 1023.98px) {
+  .app:has(.video-page) .app-main {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .app:has(.video-page) .app-content {
+    flex: 1;
     min-height: 0;
-    aspect-ratio: auto;
+    gap: 0.5rem;
+    padding: 0.5rem max(0.5rem, env(safe-area-inset-right)) 0.5rem max(0.5rem, env(safe-area-inset-left));
+  }
+
+  /* Searching or in a call: hide the bottom tabs so the video gets the full height. */
+  .app:has(.video-page.immersive) .app-tabs {
+    display: none;
+  }
+
+  .app:has(.video-page.immersive) .app-main {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .video-page {
+    min-height: 0;
+    gap: 0.5rem;
+  }
+
+  .call-settings {
+    position: absolute;
+    top: 64px;
+    left: 8px;
+    right: 8px;
+    z-index: 20;
+    display: none;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.75rem;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 12px 32px rgba(15, 16, 34, 0.35);
+    animation: stage-in 0.2s ease both;
+  }
+
+  .call-settings.open {
+    display: grid;
+  }
+
+  .room-page .room-bar .MuiButton-root {
+    min-height: 40px;
+  }
+
+  /* Every layer shares one grid cell stack: stage behind, then chat, then the controls bar at the bottom. */
+  .call-layout {
+    flex: 1;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    gap: 0;
+    container-type: size;
+  }
+
+  .stage {
+    grid-area: 1 / 1 / -1 / -1;
+    border-radius: 18px;
+  }
+
+  .self-view {
+    top: 12px;
+    right: 12px;
+    bottom: auto;
+    width: 26%;
+    min-width: 92px;
+    max-width: 180px;
+    aspect-ratio: 3 / 4;
+  }
+
+  .stage-pill {
+    max-width: calc(74% - 36px);
+  }
+
+  .controls {
+    grid-row: 3;
+    grid-column: 1;
+    z-index: 5;
+    justify-self: center;
+    max-width: calc(100% - 16px);
+    margin: 0 8px 10px;
+    padding: 6px;
+    gap: 4px;
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-line);
+    border-radius: 28px;
+  }
+
+  .controls .round.MuiIconButton-root {
+    width: 42px;
+    height: 42px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.14);
+    border-color: transparent;
+  }
+
+  .controls .round.MuiIconButton-root:hover {
+    background: rgba(255, 255, 255, 0.24);
+  }
+
+  .controls .report-button.MuiIconButton-root {
+    color: #ffc266;
+  }
+
+  .controls .block-button.MuiIconButton-root {
+    color: #ff8a80;
+  }
+
+  .controls .MuiButton-root {
+    min-width: 42px;
+    min-height: 42px;
+  }
+
+  .skip-button.MuiButton-root {
+    padding-inline: 1.125rem;
+  }
+
+  .skip-button.MuiButton-root.Mui-disabled {
+    color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .controls .MuiButton-outlinedError {
+    color: #ff8a80;
+    border-color: rgba(255, 138, 128, 0.6);
+  }
+
+  .friend-button.MuiButton-root {
+    padding: 0;
+  }
+
+  .friend-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .room-queue {
+    grid-row: 1;
+    grid-column: 1;
+    z-index: 5;
+    align-self: start;
+    justify-self: start;
+    max-width: 60%;
+    max-height: 30cqh;
+    margin: 64px 0 0 12px;
+    padding: 0.5rem 0.75rem;
+    overflow-y: auto;
+    color: #fff;
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+  }
+
+  .room-queue h2 {
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .room-queue ol,
+  .room-queue p {
+    font-size: 0.8125rem;
+  }
+
+  /* Overlay chat: messages over the bottom-left of the video, the input above the controls bar. */
+  .chat-panel {
+    grid-row: 2;
+    grid-column: 1;
+    z-index: 5;
+    align-self: end;
+    display: none;
+    padding: 0 10px 8px;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .chat-panel.in-call {
+    display: flex;
+  }
+
+  .chat-head {
+    justify-content: flex-start;
+    padding: 0;
+    border: 0;
+  }
+
+  .chat-partner {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .chat-sign-in {
+    margin-bottom: 6px;
+    padding: 0.25rem 0.75rem;
+    color: #fff;
+    background: var(--glass);
+    border-radius: 999px;
+  }
+
+  .chat-messages {
+    flex: none;
+    max-width: 82%;
+    max-height: 40cqh;
+    padding: 1.75rem 0 0.5rem;
+    gap: 0.375rem;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 2rem);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 2rem);
+  }
+
+  .chat-messages::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chat-empty {
+    display: none;
+  }
+
+  .chat-message,
+  .chat-message.partner,
+  .chat-message.me {
+    align-self: flex-start;
+    max-width: 100%;
+    padding: 0.375rem 0.75rem;
+    color: #fff;
+    background: rgba(15, 16, 34, 0.5);
+    backdrop-filter: blur(6px);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    border-radius: 16px;
+  }
+
+  .chat-message.me {
+    background: rgba(143, 71, 255, 0.5);
+  }
+
+  .chat-from {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    font-weight: 700;
+  }
+
+  .chat-form {
+    padding: 3px 3px 3px 0;
+    background: rgba(15, 16, 34, 0.45);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+  }
+
+  .chat-input {
+    height: 40px;
+    color: #fff;
+    background: transparent;
+    border: 0;
+  }
+
+  .chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .chat-send.MuiIconButton-root {
+    width: 40px;
+    height: 40px;
+    color: #fff;
+  }
+
+  .chat-send.MuiIconButton-root.Mui-disabled {
+    color: rgba(255, 255, 255, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-state,
+  .chat-message,
+  .call-settings {
+    animation: none;
+  }
+
+  .stage-pulse::before,
+  .stage-pulse::after {
+    animation: none;
+    transform: scale(0.75);
+    opacity: 0.6;
+  }
+
+  .stage > .video,
+  .controls .round.MuiIconButton-root {
+    transition: none;
   }
 }
