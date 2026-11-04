@@ -50,7 +50,9 @@ console.log('ok: onboarding tour reaches the Skip step and finishes; no horizont
 
 const a = await openUser();
 const b = await openUser();
+await a.page.getByTestId('settings-toggle').click(); // phones: name and key words live in a sheet on the stage
 await a.page.getByTestId('name-input').fill('Alice');
+await a.page.getByTestId('settings-toggle').click();
 assert.equal(await a.page.getByTestId('chat-input').isDisabled(), true);
 await start(a);
 await waitStatus(a, 'Looking');

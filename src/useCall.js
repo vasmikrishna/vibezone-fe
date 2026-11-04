@@ -28,11 +28,15 @@ function measureQuality() {
  * start(joinMessage) opens the camera and connects, resending joinMessage on every reconnect.
  * onMessage(data) sees every server message first; returning true skips the default handling.
  * failMessage is sent when a call fails (random chat skips; rooms pass null and wait for the host).
+ * preview: open the camera on mount so the self-view shows before connecting.
  */
-export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
+export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: autoPreview = false } = {}) {
   const wsRef = useRef(null);
   const pcRef = useRef(null);
   const streamRef = useRef(null);
+  const mediaPromiseRef = useRef(null); // a getUserMedia request in flight, shared by preview and start
+  const mediaGenRef = useRef(0); // bumped by stop() so a request that finishes afterwards is dropped
+  const partnerLeftTimerRef = useRef(null);
   const iceServersRef = useRef([]);
   const pendingCandidatesRef = useRef([]);
   const stoppedRef = useRef(true);
@@ -65,6 +69,7 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
   const [retrySeconds, setRetrySeconds] = useState(0);
   const [bannedUntil, setBannedUntil] = useState(null);
   const [notice, setNotice] = useState('');
+  const [partnerLeft, setPartnerLeft] = useState(false); // briefly true after the partner hangs up
   const [friendStatus, setFriendStatus] = useState('none'); // none | requested | incoming | friends
   const [canAddFriend, setCanAddFriend] = useState(false); // both of you signed in
   const friendStatusRef = useRef('none');
@@ -298,6 +303,8 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
         setActiveUsers(data.value);
         break;
       case 'matched': {
+        clearTimeout(partnerLeftTimerRef.current);
+        setPartnerLeft(false);
         const pc = createPeer();
         setSharedTags(Array.isArray(data.sharedTags) ? data.sharedTags : []);
         setPartnerName(typeof data.partnerName === 'string' ? data.partnerName : 'Guest');
@@ -335,6 +342,9 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
       case 'partnerLeft':
         closePeer();
         setStatus('searching');
+        setPartnerLeft(true);
+        clearTimeout(partnerLeftTimerRef.current);
+        partnerLeftTimerRef.current = setTimeout(() => setPartnerLeft(false), 2500);
         break;
       case 'friendStatus':
         if (FRIEND_STATUSES.includes(data.status)) setFriendStatus(data.status);
@@ -425,20 +435,39 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
     setCameraCount(camerasRef.current.length);
   };
 
-  const getMedia = async () => {
-    if (streamRef.current) return streamRef.current;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      streamRef.current = stream;
-      setLocalStream(stream);
-      listCameras(stream);
-      return stream;
-    } catch (err) {
-      const denied = err?.name === 'NotAllowedError' || err?.name === 'SecurityError';
-      const missing = err?.name === 'NotFoundError' || err?.name === 'OverconstrainedError';
-      setMediaError(denied ? 'denied' : missing ? 'nodevice' : 'other');
-      return null;
-    }
+  const getMedia = () => {
+    if (streamRef.current) return Promise.resolve(streamRef.current);
+    if (mediaPromiseRef.current) return mediaPromiseRef.current;
+    const gen = mediaGenRef.current;
+    const request = (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (gen !== mediaGenRef.current) { // stopped or unmounted while the prompt was open
+          stream.getTracks().forEach((t) => t.stop());
+          return null;
+        }
+        streamRef.current = stream;
+        setLocalStream(stream);
+        listCameras(stream);
+        return stream;
+      } catch (err) {
+        if (gen !== mediaGenRef.current) return null;
+        const denied = err?.name === 'NotAllowedError' || err?.name === 'SecurityError';
+        const missing = err?.name === 'NotFoundError' || err?.name === 'OverconstrainedError';
+        setMediaError(denied ? 'denied' : missing ? 'nodevice' : 'other');
+        return null;
+      } finally {
+        if (mediaPromiseRef.current === request) mediaPromiseRef.current = null;
+      }
+    })();
+    mediaPromiseRef.current = request;
+    return request;
+  };
+
+  /** Opens the camera and mic for the self-view without connecting. */
+  const preview = () => {
+    setMediaError(null);
+    return getMedia();
   };
 
   const start = async (joinMessage) => {
@@ -458,15 +487,24 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
     wsRef.current = null;
     ws?.close();
     closePeer();
+    mediaGenRef.current += 1;
+    mediaPromiseRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setLocalStream(null);
+    clearTimeout(partnerLeftTimerRef.current);
+    setPartnerLeft(false);
     setStatus('idle');
   };
 
   const stopRef = useRef(stop);
   stopRef.current = stop;
-  useEffect(() => () => stopRef.current(), []);
+  const previewRef = useRef(preview);
+  previewRef.current = preview;
+  useEffect(() => {
+    if (autoPreview) previewRef.current();
+    return () => stopRef.current();
+  }, [autoPreview]);
 
   const switchCamera = async () => {
     const cameras = camerasRef.current;
@@ -495,10 +533,10 @@ export function useCall({ onMessage, failMessage = { type: 'skip' } } = {}) {
   return {
     status, mediaError, micOn, setMicOn, videoOn, setVideoOn, cameraCount, sharedTags, activeUsers,
     partnerName, messages, chatText, setChatText, partnerQuality, retrySeconds, bannedUntil, notice, setNotice,
-    streak, setStreak, friendStatus, canAddFriend,
+    streak, setStreak, friendStatus, canAddFriend, localStream, partnerLeft,
     partnerMedia: { ...partnerMedia, video: partnerMedia.video && !remoteVideoMuted },
     localVideo, remoteVideo, chatListRef,
-    send, start, stop, leaveCall, sendChat, switchCamera,
+    send, start, stop, preview, leaveCall, sendChat, switchCamera,
     addFriend: () => send({ type: 'friendRequest' }),
   };
 }

@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -21,6 +20,10 @@ import PauseIcon from '@mui/icons-material/Pause';
 import CallEndIcon from '@mui/icons-material/CallEnd';
 import SendIcon from '@mui/icons-material/Send';
 import PersonAddAlt from '@mui/icons-material/PersonAddAlt';
+import HowToRegOutlined from '@mui/icons-material/HowToRegOutlined';
+import FlagOutlined from '@mui/icons-material/FlagOutlined';
+import BlockOutlined from '@mui/icons-material/BlockOutlined';
+import Tooltip from '@mui/material/Tooltip';
 import { getToken } from './api';
 import './video.css';
 
@@ -68,63 +71,91 @@ function useAwayAnnouncement(inCall, away, name) {
   return last.text;
 }
 
-export function CallVideos({ call, waiting }) {
+/** The big centred message on the stage while there is no partner video. */
+export function StageState({ pulse = false, title, sub, children }) {
+  return (
+    <div className="stage-state">
+      {pulse && <span className="stage-pulse" aria-hidden="true"><span /></span>}
+      <p className="stage-title">{title}</p>
+      {sub && <p className="stage-sub">{sub}</p>}
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The call stage: the partner's video fills it, our camera sits in a corner window.
+ * center shows while not connected, corner sits top-left while not connected, extra is added to the partner pill.
+ */
+export function CallVideos({ call, center, corner, extra }) {
   const inCall = call.status === 'connected';
   const name = call.partnerName || 'Your partner';
   const { video, audio, hold } = call.partnerMedia;
   const away = hold ? 'hold' : video ? '' : 'camera';
   const announcement = useAwayAnnouncement(inCall, away, name);
   return (
-    <div className="video-container">
-      <div className="video-wrapper">
-        <video ref={call.remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
-        {inCall && away === 'hold' && (
-          <div className="media-overlay" data-testid="remote-on-hold">
-            <span className="media-avatar" aria-hidden="true"><PauseIcon fontSize="large" /></span>
-            <p className="media-title">{name} is on hold</p>
-            <p className="media-sub">They may be on another call or switched apps. Waiting for them to come back…</p>
-          </div>
-        )}
-        {inCall && away === 'camera' && (
-          <div className="media-overlay" data-testid="remote-camera-off">
-            <span className="media-avatar" aria-hidden="true">{name.charAt(0).toUpperCase()}</span>
-            <p className="media-title">{name} turned their camera off</p>
-          </div>
-        )}
-        {inCall && !audio && (
-          <span className="media-mic-off" role="img" aria-label={`${name} is muted`} data-testid="remote-mic-off">
-            <MicOffIcon fontSize="small" />
-          </span>
-        )}
-        <span className="visually-hidden" aria-live="polite">{announcement}</span>
-        {inCall ? (
+    <div className={inCall ? 'stage in-call' : 'stage'} role="region" aria-label="Video call">
+      <video ref={call.remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
+      {!inCall && center}
+      {inCall && away === 'hold' && (
+        <div className="media-overlay" data-testid="remote-on-hold">
+          <span className="media-avatar" aria-hidden="true"><PauseIcon fontSize="large" /></span>
+          <p className="media-title">{name} is on hold</p>
+          <p className="media-sub">They may be on another call or switched apps. Waiting for them to come back…</p>
+        </div>
+      )}
+      {inCall && away === 'camera' && (
+        <div className="media-overlay" data-testid="remote-camera-off">
+          <span className="media-avatar" aria-hidden="true">{name.charAt(0).toUpperCase()}</span>
+          <p className="media-title">{name} turned their camera off</p>
+        </div>
+      )}
+      <span className="visually-hidden" aria-live="polite">{announcement}</span>
+      {inCall ? (
+        <div className="stage-pill" data-testid="partner-pill">
           <span
             className="partner-quality"
             style={{ backgroundColor: QUALITY_COLORS[call.partnerQuality] || '#9e9e9e' }}
+            role="img"
+            aria-label={`Partner network: ${call.partnerQuality}`}
             title={`Partner network: ${call.partnerQuality}`}
           />
-        ) : (
-          <div className="loader">
-            {waiting && <CircularProgress sx={{ color: '#8F47FF' }} aria-label="Waiting" />}
-          </div>
-        )}
-      </div>
-      <div className="video-wrapper">
+          <span className="stage-pill-text">
+            <strong>{name}</strong>
+            {extra && <span>{extra}</span>}
+          </span>
+          {!audio && (
+            <span className="media-mic-off" role="img" aria-label={`${name} is muted`} data-testid="remote-mic-off">
+              <MicOffIcon fontSize="inherit" />
+            </span>
+          )}
+        </div>
+      ) : (
+        corner && <div className="stage-corner">{corner}</div>
+      )}
+      <div className="self-view">
         <video ref={call.localVideo} autoPlay playsInline muted className="video local" data-testid="local-video" />
-        {!call.videoOn && (
-          <div className="media-overlay" data-testid="local-camera-off">
-            <VideocamOffIcon fontSize="large" aria-hidden="true" />
+        {!call.localStream ? (
+          <div className="media-overlay self-off" data-testid="self-preview-off">
+            <VideocamOffIcon aria-hidden="true" />
+            <Button size="small" variant="contained" disableElevation onClick={call.preview} data-testid="camera-preview">
+              Turn on camera
+            </Button>
+          </div>
+        ) : !call.videoOn && (
+          <div className="media-overlay self-off" data-testid="local-camera-off">
+            <VideocamOffIcon aria-hidden="true" />
             <p className="media-title">Your camera is off</p>
           </div>
         )}
-        {call.cameraCount > 1 && (
+        {call.localStream && call.cameraCount > 1 && (
           <IconButton
             className="switch-camera"
             onClick={call.switchCamera}
             aria-label="Switch camera"
             data-testid="switch-camera"
           >
-            <CameraswitchIcon />
+            <CameraswitchIcon fontSize="small" />
           </IconButton>
         )}
       </div>
@@ -132,41 +163,66 @@ export function CallVideos({ call, waiting }) {
   );
 }
 
-/** Mic, camera and hang-up, then the page's own buttons, then Report and Block during a call. */
-export function CallControls({ call, idle, onHangUp, onReport, onBlock, children }) {
+/** A tooltip that also works on disabled buttons; the button keeps its own aria-label. */
+function Tip({ title, children }) {
   return (
-    <div className="controls">
-      <IconButton
-        className="mute-button"
-        onClick={() => call.setMicOn((on) => !on)}
-        aria-label={call.micOn ? 'Mute microphone' : 'Unmute microphone'}
-        aria-pressed={!call.micOn}
-        data-testid="toggle-mic"
-      >
-        {call.micOn ? <MicIcon className="icon" /> : <MicOffIcon className="icon" />}
-      </IconButton>
-      <IconButton
-        className="video-button"
-        onClick={() => call.setVideoOn((on) => !on)}
-        aria-label={call.videoOn ? 'Turn camera off' : 'Turn camera on'}
-        aria-pressed={!call.videoOn}
-        data-testid="toggle-video"
-      >
-        {call.videoOn ? <VideocamIcon className="icon" /> : <VideocamOffIcon className="icon" />}
-      </IconButton>
-      <IconButton className="hang-up" disabled={idle} onClick={onHangUp} aria-label="Stop" data-testid="hang-up">
-        <CallEndIcon />
-      </IconButton>
+    <Tooltip title={title} describeChild>
+      <span className="tip">{children}</span>
+    </Tooltip>
+  );
+}
+
+/**
+ * Mic, camera and hang-up, then the page's own buttons, then Add friend, Report and Block during a call.
+ * hangUpTestId lets random chat use its start-stop button as the hang-up.
+ */
+export function CallControls({ call, idle, onHangUp, onReport, onBlock, hangUpTestId = 'hang-up', children }) {
+  const inCall = call.status === 'connected';
+  return (
+    <div className="controls" role="toolbar" aria-label="Call controls">
+      <Tip title={call.micOn ? 'Mute microphone' : 'Unmute microphone'}>
+        <IconButton
+          className={call.micOn ? 'round mute-button' : 'round mute-button off'}
+          onClick={() => call.setMicOn((on) => !on)}
+          aria-label={call.micOn ? 'Mute microphone' : 'Unmute microphone'}
+          aria-pressed={!call.micOn}
+          data-testid="toggle-mic"
+        >
+          {call.micOn ? <MicIcon /> : <MicOffIcon />}
+        </IconButton>
+      </Tip>
+      <Tip title={call.videoOn ? 'Turn camera off' : 'Turn camera on'}>
+        <IconButton
+          className={call.videoOn ? 'round video-button' : 'round video-button off'}
+          onClick={() => call.setVideoOn((on) => !on)}
+          aria-label={call.videoOn ? 'Turn camera off' : 'Turn camera on'}
+          aria-pressed={!call.videoOn}
+          data-testid="toggle-video"
+        >
+          {call.videoOn ? <VideocamIcon /> : <VideocamOffIcon />}
+        </IconButton>
+      </Tip>
+      {!idle && (
+        <Tip title="Stop">
+          <IconButton className="round hang-up" onClick={onHangUp} aria-label="Stop" data-testid={hangUpTestId}>
+            <CallEndIcon />
+          </IconButton>
+        </Tip>
+      )}
       {children}
-      {call.status === 'connected' && (
+      {inCall && (
         <>
           {call.canAddFriend && <FriendButton call={call} />}
-          <Button variant="outlined" color="warning" onClick={onReport} data-testid="report">
-            Report
-          </Button>
-          <Button variant="outlined" color="error" onClick={onBlock} data-testid="block">
-            Block
-          </Button>
+          <Tip title="Report">
+            <IconButton className="round report-button" onClick={onReport} aria-label="Report" data-testid="report">
+              <FlagOutlined />
+            </IconButton>
+          </Tip>
+          <Tip title="Block">
+            <IconButton className="round block-button" onClick={onBlock} aria-label="Block" data-testid="block">
+              <BlockOutlined />
+            </IconButton>
+          </Tip>
         </>
       )}
     </div>
@@ -180,28 +236,33 @@ const FRIEND_BUTTONS = {
   friends: ['Friends ✓', true],
 };
 
-/** Add friend during a call; only shown when both of you are signed in. */
+/** Add friend during a call; only shown when both of you are signed in. On phones the label is hidden. */
 function FriendButton({ call }) {
   const [label, disabled] = FRIEND_BUTTONS[call.friendStatus] || FRIEND_BUTTONS.none;
+  const done = call.friendStatus === 'requested' || call.friendStatus === 'friends';
   return (
-    <Button
-      variant={call.friendStatus === 'incoming' ? 'contained' : 'outlined'}
-      disableElevation
-      startIcon={call.friendStatus === 'none' ? <PersonAddAlt /> : null}
-      disabled={disabled}
-      onClick={call.addFriend}
-      data-testid="add-friend"
-    >
-      {label}
-    </Button>
+    <Tip title={label}>
+      <Button
+        className={call.friendStatus === 'incoming' ? 'friend-button incoming' : 'friend-button'}
+        variant="contained"
+        disableElevation
+        disabled={disabled}
+        onClick={call.addFriend}
+        data-testid="add-friend"
+      >
+        {done ? <HowToRegOutlined aria-hidden="true" /> : <PersonAddAlt aria-hidden="true" />}
+        <span className="friend-label">{label}</span>
+      </Button>
+    </Tip>
   );
 }
 
+/** Side panel on desktop; below 1024px it floats over the bottom-left of the stage, Instagram-Live style. */
 export function ChatPanel({ call }) {
   const inCall = call.status === 'connected';
   const { pathname } = useLocation();
   return (
-    <aside className="chat-panel" aria-label="Text chat">
+    <aside className={inCall ? 'chat-panel in-call' : 'chat-panel'} aria-label="Text chat">
       <div className="chat-head">
         <h2 className="chat-partner" data-testid="partner-name">
           {inCall ? call.partnerName : 'Chat'}
@@ -218,7 +279,7 @@ export function ChatPanel({ call }) {
         )}
         {call.messages.map((m) => (
           <li key={m.id} className={`chat-message ${m.from}`} data-testid="chat-message">
-            <span className="visually-hidden">{m.from === 'me' ? 'You: ' : `${call.partnerName}: `}</span>
+            <span className="chat-from">{m.from === 'me' ? 'You: ' : `${call.partnerName}: `}</span>
             {m.text}
           </li>
         ))}
@@ -230,7 +291,7 @@ export function ChatPanel({ call }) {
           onChange={(e) => call.setChatText(e.target.value)}
           maxLength={MAX_CHAT_LENGTH}
           disabled={!inCall}
-          placeholder="Type a message"
+          placeholder="Say something…"
           aria-label="Type a message"
           className="chat-input"
           data-testid="chat-input"
