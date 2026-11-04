@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — call preferences (#51)
+
+- A Preferences button (gear icon) in the call controls, on the video chat and room pages, idle or in a call, opens a dialog. On phones the gear is hidden while in a call (the floating bar is full), so set preferences before connecting; on desktop they can be changed mid-call. Choices are saved on this device (`src/prefs.js`, `localStorage.vibezonePrefs`; bad or unknown values fall back to the defaults).
+- Screen layout: Focus (partner full screen, you in a corner, the default) or Split (partner on top and you below on phones and tablets, side by side on desktop). It switches live during a call (`.stage.split` in `src/video.css`).
+- Recording output (video and audio, or audio only), quality (Low 640×240 at 1 Mbps, Standard 1280×480 at 2.5 Mbps, High 1920×720 at 5 Mbps) and format (Automatic, WebM, MP4). Formats the browser can't record are disabled with "Not supported in this browser", and an unsupported choice falls back to Automatic. Audio only records both voices mixed to `.webm` or `.m4a`. The settings apply the next time you press Record (`src/recorder.js` `startRecorder({ type, quality, format })`).
+- Phones: the in-call control bar keeps its seven buttons on one row at 375px (40px rounds, Record and Add friend as rounds too), and notices ("Recording saved…") pop at the top instead of over the bar.
+- `e2e/two-users.mjs`: switches to Split and checks your video sits below the partner at 375px and beside it at 1280px, switches back to Focus, then records audio-only WebM and checks the download.
+
 ## Unreleased — call recording with consent (#48)
 
 - Record button in the call controls (random chat and rooms, only while connected): Record → Waiting… → Stop recording. Recording starts only after the partner taps Allow in a consent dialog ("{name} wants to record this call…"); Decline or no answer in 30 s cancels it with a notice. Either person can stop.

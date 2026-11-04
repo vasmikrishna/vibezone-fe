@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { recordingSupported, startRecorder } from './recorder';
+import { readPrefs } from './prefs';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 const MAX_RETRY_MS = 30000;
@@ -171,8 +172,10 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
   };
 
   const beginRecording = () => {
+    const { recordType, recordQuality, recordFormat } = readPrefs();
     try {
       recorderRef.current = startRecorder({
+        type: recordType, quality: recordQuality, format: recordFormat,
         partner: {
           video: remoteVideo.current, stream: remoteVideo.current?.srcObject, name: partnerNameRef.current,
           videoOn: () => partnerVideoRef.current,

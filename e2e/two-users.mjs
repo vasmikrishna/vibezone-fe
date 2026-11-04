@@ -114,12 +114,12 @@ const recShot = async (u, name) => {
   await u.page.screenshot({ path: `${recShots}/${name}.png` });
 };
 const indicator = (u) => u.page.getByTestId('rec-indicator');
-async function expectDownload(trigger) {
+async function expectDownload(trigger, minSize = 10000) {
   const [download] = await Promise.all([a.page.waitForEvent('download', { timeout: 10000 }), trigger()]);
-  assert.match(download.suggestedFilename(), /^vibezone-call-\d{4}-\d{2}-\d{2}-\d{4}\.(webm|mp4)$/);
+  assert.match(download.suggestedFilename(), /^vibezone-call-\d{4}-\d{2}-\d{2}-\d{4}\.(webm|mp4|m4a)$/);
   const { size } = await stat(await download.path());
-  assert.ok(size > 10000, `recording is ${size} bytes`);
-  return size;
+  assert.ok(size > minSize, `recording is ${size} bytes`);
+  return { size, name: download.suggestedFilename() };
 }
 await a.page.getByTestId('record').click();
 await b.page.getByTestId('record-allow').waitFor({ timeout: 5000 });
@@ -144,7 +144,7 @@ await b.page.setViewportSize({ width: 390, height: 844 });
 await recShot(b, 'b-phone-partner-recording');
 await a.page.setViewportSize({ width: 375, height: 812 });
 await b.page.setViewportSize({ width: 375, height: 812 });
-const size = await expectDownload(() => a.page.getByTestId('record').click());
+const { size } = await expectDownload(() => a.page.getByTestId('record').click());
 await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
 await indicator(b).waitFor({ state: 'detached', timeout: 5000 });
 console.log(`ok: recording needs consent (decline, then allow), both see REC, stop downloads ${size} bytes`);
@@ -158,6 +158,50 @@ await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
 console.log('ok: the partner skipping mid-recording still downloads it for the recorder');
 await waitStatus(a, 'Connected', 20000);
 await waitStatus(b, 'Connected', 5000);
+
+// On phones the gear is hidden during a call (the bar is full), so open preferences at desktop width.
+const setPrefs = async (u, ids, shot) => {
+  await u.page.setViewportSize({ width: 1280, height: 800 });
+  await u.page.getByTestId('notice').waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {}); // a snackbar covers the toolbar
+  await u.page.getByTestId('preferences-toggle').click();
+  await u.page.getByTestId('preferences').waitFor();
+  for (const id of ids) await u.page.getByTestId(id).check();
+  if (shot) await recShot(u, shot);
+  await u.page.getByTestId('preferences-close').click();
+  await u.page.getByTestId('preferences').waitFor({ state: 'detached' });
+  await u.page.setViewportSize({ width: 375, height: 812 });
+  await u.page.waitForTimeout(300);
+};
+const boxes = async (u) => [await u.page.getByTestId('remote-video').boundingBox(), await u.page.getByTestId('local-video').boundingBox()];
+assert.equal(await a.page.getByTestId('preferences-toggle').isVisible(), false, 'phone in-call bar hides the gear');
+await setPrefs(a, ['pref-layout-split'], 'a-preferences-dialog');
+let [remote, local] = await boxes(a);
+assert.ok(local.y >= remote.y + remote.height - 2, `split phone: local ${JSON.stringify(local)} below remote ${JSON.stringify(remote)}`);
+assert.ok(await a.page.locator('.stage').evaluate((el) => el.scrollWidth <= el.clientWidth), 'split: no horizontal overflow');
+const bar = await a.page.locator('.controls').boundingBox();
+assert.ok(bar.height < 70, `phone controls stay on one row (bar is ${bar.height}px tall)`);
+await recShot(a, 'a-split-phone');
+await a.page.setViewportSize({ width: 1280, height: 800 });
+await a.page.waitForTimeout(300);
+[remote, local] = await boxes(a);
+assert.ok(local.x >= remote.x + remote.width - 2, `split desktop: local ${JSON.stringify(local)} right of remote ${JSON.stringify(remote)}`);
+await recShot(a, 'a-split-desktop');
+await a.page.setViewportSize({ width: 375, height: 812 });
+await setPrefs(a, ['pref-layout-focus']);
+[remote, local] = await boxes(a);
+assert.ok(local.x >= remote.x && local.y >= remote.y && local.x + local.width <= remote.x + remote.width
+  && local.y + local.height <= remote.y + remote.height, 'focus: local window sits inside the remote video');
+
+await setPrefs(a, ['pref-record-audio', 'pref-format-webm']);
+await a.page.getByTestId('record').click();
+await b.page.getByTestId('record-allow').click({ timeout: 5000 });
+await indicator(a).waitFor({ timeout: 5000 });
+await a.page.waitForTimeout(2000);
+const audioFile = await expectDownload(() => a.page.getByTestId('record').click(), 5000);
+assert.match(audioFile.name, /\.webm$/);
+await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
+await setPrefs(a, ['pref-record-video']);
+console.log('ok: preferences: split layout stacks on phones and sits side by side on desktop; audio-only WebM recording downloads');
 
 await a.page.getByTestId('skip').click();
 await waitStatus(b, 'Looking', 5000);
