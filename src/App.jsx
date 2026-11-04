@@ -22,7 +22,7 @@ import AdminRooms from './admin/Rooms';
 import { isIOS } from './Layout';
 import { Capacitor } from '@capacitor/core';
 
-const CONSENT_VERSION = 2;
+const CONSENT_VERSION = 3; // 3: call recording with consent
 
 function Chat() {
   const [consented, setConsented] = useState(

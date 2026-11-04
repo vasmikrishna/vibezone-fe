@@ -61,6 +61,16 @@ export function Terms() {
         some offensive words are replaced with asterisks. The prohibited content rules apply to
         text and display names too.
       </p>
+      <h2>Recording calls</h2>
+      <p>
+        Vibezone does not record or store calls. You may record a call only with the Record button
+        in the app, and only after the other person allows it there. Both of you see a recording
+        indicator the whole time and either of you can stop it. The recording is created and saved
+        on the recording person&apos;s device; Vibezone never receives it. You are responsible for
+        how you use and share a recording and must follow the law where you and the other person
+        live. Recording someone without their consent in the app, for example by screen recording,
+        is against these Terms and can be reported.
+      </p>
       <h2>Reporting and blocking</h2>
       <p>
         During a call you can report or block the other person. Either action ends the call and
@@ -90,7 +100,16 @@ export function Privacy() {
       <p>
         Calls are peer-to-peer: video and audio go directly between you and your partner, or
         through a relay server when a direct connection is not possible. Vibezone does not
-        record calls.
+        record or store calls.
+      </p>
+      <h2>Recordings made by users</h2>
+      <p>
+        A user may record a call only after the other person allows it in the app, and both see a
+        recording indicator while it runs. The recording, including both people&apos;s video and
+        voice, is created and saved only on the recording user&apos;s device. Vibezone never receives
+        or stores it; our server only passes on the request, the answer and the stop. Users are
+        responsible for how they use and share recordings and must follow the law. Recording without
+        consent, such as screen recording, is against the Terms and can be reported.
       </p>
       <h2>Your IP address</h2>
       <p>
