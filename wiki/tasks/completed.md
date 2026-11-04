@@ -1,4 +1,5 @@
 # Completed
+- 2026-11-04: call recording with the partner's consent, saved on the recorder's device (#48). See docs/CHANGELOG.md.
 - 2026-11-04: signed-in account sidebar and Badges dialog (#39) — done, uncommitted. See docs/CHANGELOG.md.
 - 2026-11-02: accounts (phone login, profile, delete) and private rooms, iOS rooms-only (#36) — done, uncommitted. See docs/CHANGELOG.md.
 - 2026-11-02: launch-readiness pass (web and mobile video chat). See docs/CHANGELOG.md.

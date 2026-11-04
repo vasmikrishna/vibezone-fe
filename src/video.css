@@ -453,6 +453,72 @@
   opacity: 0.75;
 }
 
+/* Recording: a button in the controls and a red badge on the stage for both people. */
+.record-button.MuiButton-root {
+  gap: 0.375rem;
+  padding-inline: 1rem;
+  color: #c62828;
+  background: #fdecec;
+}
+
+.record-button.MuiButton-root:hover {
+  background: #fbd9d9;
+}
+
+.record-button.on.MuiButton-root {
+  color: #fff;
+  background: #d32f2f;
+}
+
+.record-button.MuiButton-root.Mui-disabled {
+  color: #c62828;
+  background: #fdecec;
+  opacity: 0.6;
+}
+
+.rec-indicator {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: calc(100% - 24px);
+  padding: 0.375rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  white-space: nowrap;
+  background: rgba(211, 47, 47, 0.92);
+  border-radius: 999px;
+  transform: translateX(-50%);
+  box-shadow: 0 2px 12px rgba(211, 47, 47, 0.45);
+}
+
+.rec-indicator > span:not(.rec-dot) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  animation: rec-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+  50% { opacity: 0.25; }
+}
+
+.record-consent-text {
+  margin: 0;
+}
+
 /* Chat: a side panel on desktop. */
 .chat-panel {
   display: flex;
@@ -798,8 +864,16 @@
     border-color: rgba(255, 138, 128, 0.6);
   }
 
-  .friend-button.MuiButton-root {
+  .friend-button.MuiButton-root,
+  .record-button.MuiButton-root {
     padding: 0;
+  }
+
+  .rec-indicator {
+    top: 56px;
+    left: 12px;
+    max-width: calc(74% - 36px);
+    transform: none;
   }
 
   .friend-label {
@@ -958,6 +1032,10 @@
   .stage-state,
   .chat-message,
   .call-settings {
+    animation: none;
+  }
+
+  .rec-dot {
     animation: none;
   }
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { recordingSupported, startRecorder } from './recorder';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 const MAX_RETRY_MS = 30000;
@@ -6,6 +7,8 @@ const REPLACED_CLOSE_CODE = 4000;
 const MEDIA_ON = { video: true, audio: true, hold: false };
 const liveTrack = (t) => Boolean(t) && t.readyState === 'live' && !t.muted;
 const FRIEND_STATUSES = ['none', 'requested', 'incoming', 'friends'];
+const RECORD_ASK_MS = 30000;
+const RECORD_IDLE = { state: 'idle', by: null, startedAt: null };
 const ERRORS = {
   'chat rate limit': 'Slow down: at most 2 messages a second.',
   'too many friend requests, try later': 'Too many friend requests. Try again later.',
@@ -80,6 +83,15 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
   const [, setTrackTick] = useState(0); // re-render when a local track is muted, unmuted or ends
   const mediaRef = useRef(MEDIA_ON);
   const [streak, setStreakState] = useState(null); // { count, best } for a signed-in user
+  // Recording needs the partner's consent: idle | requesting | asked (partner asked us) | recording.
+  const [record, setRecord] = useState(RECORD_IDLE); // { state, by: 'me' | 'partner', startedAt }
+  const recordRef = useRef('idle');
+  const recorderRef = useRef(null); // only on the side that asked
+  const recordTimerRef = useRef(null);
+  const partnerNameRef = useRef('');
+  partnerNameRef.current = partnerName || 'Your partner';
+  const partnerVideoRef = useRef(true);
+  partnerVideoRef.current = partnerMedia.video && !partnerMedia.hold && !remoteVideoMuted;
   const streakRef = useRef(null);
 
   const setStreak = useCallback((value) => {
@@ -142,7 +154,90 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
     return () => clearInterval(interval);
   }, []);
 
+  const setRecording = (state, by = null) => {
+    clearTimeout(recordTimerRef.current);
+    recordRef.current = state;
+    setRecord(state === 'idle' ? RECORD_IDLE : { state, by, startedAt: state === 'recording' ? Date.now() : null });
+  };
+
+  /** Stops our recorder, if any, and downloads what was recorded. */
+  const finishRecording = () => {
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    recorder?.finish().then(
+      () => setNotice('Recording saved to your downloads'),
+      () => setNotice('Could not save the recording.'),
+    );
+  };
+
+  const beginRecording = () => {
+    try {
+      recorderRef.current = startRecorder({
+        partner: {
+          video: remoteVideo.current, stream: remoteVideo.current?.srcObject, name: partnerNameRef.current,
+          videoOn: () => partnerVideoRef.current,
+        },
+        me: { video: localVideo.current, stream: streamRef.current, name: 'You', videoOn: () => mediaRef.current.video },
+      });
+    } catch {
+      send({ type: 'recordStop' });
+      setRecording('idle');
+      setNotice('Could not start recording.');
+      return;
+    }
+    setRecording('recording', 'me');
+    setNotice('Recording started');
+  };
+
+  const requestRecording = () => {
+    if (!recordingSupported || !pcRef.current || recordRef.current !== 'idle') return;
+    send({ type: 'recordRequest' });
+    setRecording('requesting');
+    recordTimerRef.current = setTimeout(() => {
+      if (recordRef.current !== 'requesting') return;
+      send({ type: 'recordStop' }); // withdraws the request so a late Allow does nothing
+      setRecording('idle');
+      setNotice('No answer to your recording request');
+    }, RECORD_ASK_MS);
+  };
+
+  const answerRecording = (allow) => {
+    if (recordRef.current !== 'asked') return;
+    send({ type: allow ? 'recordAccept' : 'recordDecline' });
+    setRecording(allow ? 'recording' : 'idle', allow ? 'partner' : null);
+  };
+
+  const stopRecording = () => {
+    if (recordRef.current !== 'recording') return;
+    send({ type: 'recordStop' });
+    finishRecording();
+    setRecording('idle');
+  };
+
+  const handleRecordMessage = (type) => {
+    const state = recordRef.current;
+    const name = partnerNameRef.current;
+    if (type === 'recordRequest') {
+      if (state === 'idle') setRecording('asked');
+      else send({ type: 'recordDecline' }); // already asking or recording
+    } else if (type === 'recordAccept') {
+      if (state === 'requesting') beginRecording();
+      else send({ type: 'recordStop' }); // too late: tell them we are not recording
+    } else if (type === 'recordDecline') {
+      if (state === 'requesting') {
+        setRecording('idle');
+        setNotice(`${name} declined recording`);
+      }
+    } else if (type === 'recordStop' && state !== 'idle') {
+      if (state === 'recording') setNotice(`${name} stopped recording`);
+      finishRecording();
+      setRecording('idle');
+    }
+  };
+
   const closePeer = () => {
+    finishRecording(); // the call ended: keep what was recorded
+    setRecording('idle');
     pcRef.current?.close();
     pcRef.current = null;
     pendingCandidatesRef.current = [];
@@ -332,6 +427,12 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
         if ([data.video, data.audio, data.hold].every((v) => typeof v === 'boolean')) {
           setPartnerMedia({ video: data.video, audio: data.audio, hold: data.hold });
         }
+        break;
+      case 'recordRequest':
+      case 'recordAccept':
+      case 'recordDecline':
+      case 'recordStop':
+        handleRecordMessage(data.type);
         break;
       case 'chat':
         addMessage('partner', data.text);
@@ -534,6 +635,9 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
     status, mediaError, micOn, setMicOn, videoOn, setVideoOn, cameraCount, sharedTags, activeUsers,
     partnerName, messages, chatText, setChatText, partnerQuality, retrySeconds, bannedUntil, notice, setNotice,
     streak, setStreak, friendStatus, canAddFriend, localStream, partnerLeft,
+    recording: record.state, recordingBy: record.by, recordingStartedAt: record.startedAt, recordingSupported,
+    requestRecording, stopRecording, allowRecording: () => answerRecording(true),
+    declineRecording: () => answerRecording(false),
     partnerMedia: { ...partnerMedia, video: partnerMedia.video && !remoteVideoMuted },
     localVideo, remoteVideo, chatListRef,
     send, start, stop, preview, leaveCall, sendChat, switchCamera,

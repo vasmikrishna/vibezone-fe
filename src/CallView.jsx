@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import Button from '@mui/material/Button';
@@ -23,6 +23,7 @@ import PersonAddAlt from '@mui/icons-material/PersonAddAlt';
 import HowToRegOutlined from '@mui/icons-material/HowToRegOutlined';
 import FlagOutlined from '@mui/icons-material/FlagOutlined';
 import BlockOutlined from '@mui/icons-material/BlockOutlined';
+import FiberManualRecord from '@mui/icons-material/FiberManualRecord';
 import Tooltip from '@mui/material/Tooltip';
 import { getToken } from './api';
 import './video.css';
@@ -71,6 +72,53 @@ function useAwayAnnouncement(inCall, away, name) {
   return last.text;
 }
 
+const clock = (ms) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+};
+
+/** The red badge both people see for as long as a recording runs. */
+function RecIndicator({ call, name }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const time = clock(now - call.recordingStartedAt);
+  return (
+    <div className="rec-indicator" data-testid="rec-indicator">
+      <span className="rec-dot" aria-hidden="true" />
+      <span aria-hidden="true">{call.recordingBy === 'me' ? `REC ${time}` : `${name} is recording · ${time}`}</span>
+      <span className="visually-hidden">Recording</span>
+    </div>
+  );
+}
+
+/** Asks for consent when the partner wants to record; recording starts only after Allow. */
+function RecordConsentDialog({ call, name }) {
+  return (
+    <Dialog
+      open={call.recording === 'asked'}
+      onClose={call.declineRecording}
+      aria-labelledby="record-consent-title"
+      aria-describedby="record-consent-text"
+      data-testid="record-consent"
+    >
+      <DialogTitle id="record-consent-title">Allow recording?</DialogTitle>
+      <DialogContent>
+        <p id="record-consent-text" className="record-consent-text">
+          {name} wants to record this call. The recording includes your video and voice and is saved
+          only on their device.
+        </p>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={call.declineRecording} data-testid="record-decline">Decline</Button>
+        <Button variant="contained" color="error" onClick={call.allowRecording} data-testid="record-allow">Allow</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 /** The big centred message on the stage while there is no partner video. */
 export function StageState({ pulse = false, title, sub, children }) {
   return (
@@ -93,6 +141,8 @@ export function CallVideos({ call, center, corner, extra }) {
   const { video, audio, hold } = call.partnerMedia;
   const away = hold ? 'hold' : video ? '' : 'camera';
   const announcement = useAwayAnnouncement(inCall, away, name);
+  const recording = inCall && call.recording === 'recording';
+  const recordText = !recording ? '' : call.recordingBy === 'me' ? 'Recording' : `${name} is recording`;
   return (
     <div className={inCall ? 'stage in-call' : 'stage'} role="region" aria-label="Video call">
       <video ref={call.remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
@@ -111,6 +161,9 @@ export function CallVideos({ call, center, corner, extra }) {
         </div>
       )}
       <span className="visually-hidden" aria-live="polite">{announcement}</span>
+      <span className="visually-hidden" aria-live="assertive">{recordText}</span>
+      {recording && <RecIndicator call={call} name={name} />}
+      <RecordConsentDialog call={call} name={name} />
       {inCall ? (
         <div className="stage-pill" data-testid="partner-pill">
           <span
@@ -212,6 +265,7 @@ export function CallControls({ call, idle, onHangUp, onReport, onBlock, hangUpTe
       {children}
       {inCall && (
         <>
+          <RecordButton call={call} />
           {call.canAddFriend && <FriendButton call={call} />}
           <Tip title="Report">
             <IconButton className="round report-button" onClick={onReport} aria-label="Report" data-testid="report">
@@ -226,6 +280,30 @@ export function CallControls({ call, idle, onHangUp, onReport, onBlock, hangUpTe
         </>
       )}
     </div>
+  );
+}
+
+/** Record → Waiting… (partner deciding) → Stop recording; either person can stop. */
+function RecordButton({ call }) {
+  const { recording } = call;
+  const label = !call.recordingSupported ? "Recording isn't supported in this browser"
+    : recording === 'requesting' ? 'Waiting…'
+      : recording === 'recording' ? 'Stop recording' : 'Record';
+  return (
+    <Tip title={label}>
+      <Button
+        className={recording === 'recording' ? 'record-button on' : 'record-button'}
+        variant="contained"
+        disableElevation
+        disabled={!call.recordingSupported || recording === 'requesting' || recording === 'asked'}
+        onClick={recording === 'recording' ? call.stopRecording : call.requestRecording}
+        aria-label={call.recordingSupported ? label : 'Record'}
+        data-testid="record"
+      >
+        <FiberManualRecord aria-hidden="true" />
+        <span className="friend-label">{call.recordingSupported ? label : 'Record'}</span>
+      </Button>
+    </Tip>
   );
 }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — call recording with consent (#48)
+
+- Record button in the call controls (random chat and rooms, only while connected): Record → Waiting… → Stop recording. Recording starts only after the partner taps Allow in a consent dialog ("{name} wants to record this call…"); Decline or no answer in 30 s cancels it with a notice. Either person can stop.
+- Both people see a red pulsing REC badge on the stage with the elapsed time ("{name} is recording" for the partner), announced to screen readers.
+- The recorder (`src/recorder.js`, only on the side that asked) draws both videos side by side on a 1280×480 canvas (partner left, you right, name labels, "Recorded on Vibezone" watermark, an initial on a dark tile when a camera is off), mixes both voices with Web Audio and records with MediaRecorder (WebM VP9/VP8, or MP4 on Safari). Stopping, the partner stopping or skipping, hang-up, leaving or a lost connection downloads `vibezone-call-YYYY-MM-DD-HHMM.webm|mp4`. Nothing is uploaded. Browsers without MediaRecorder get a disabled button with "Recording isn't supported in this browser".
+- Terms, Privacy and the home FAQ explain recording with consent; consent version bumped to 3 so everyone sees the consent screen again.
+
 ## Unreleased — call stage and overlay chat (#46)
 
 - Video chat and rooms now use one dark video stage: the partner fills it (16:9 on desktop, full height on phones) and your own camera is a mirrored picture-in-picture window (bottom-right on desktop, top-right on phones) with the camera-switch button and "Your camera is off" overlay.

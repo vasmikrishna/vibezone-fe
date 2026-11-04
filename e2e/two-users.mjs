@@ -1,6 +1,7 @@
 // Two to three real browsers with fake cameras against a running frontend and backend.
 // Usage: node e2e/two-users.mjs [frontendUrl]   Set CHROMIUM_PATH to use an existing Chromium.
 import assert from 'node:assert/strict';
+import { stat } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const url = process.argv[2] || 'http://localhost:5173/chat';
@@ -105,6 +106,58 @@ await shoot('b-sees-on-hold');
 await setHidden(a, false);
 await b.page.getByTestId('remote-on-hold').waitFor({ state: 'detached', timeout: 5000 });
 console.log('ok: partner sees camera off, mic off and on hold, and each clears again');
+
+const recShots = process.env.REC_SHOT_DIR; // optional: consent dialog, REC badge on desktop, partner view on a phone
+const recShot = async (u, name) => {
+  if (!recShots) return;
+  await u.page.waitForTimeout(800); // let the layout settle after a viewport change
+  await u.page.screenshot({ path: `${recShots}/${name}.png` });
+};
+const indicator = (u) => u.page.getByTestId('rec-indicator');
+async function expectDownload(trigger) {
+  const [download] = await Promise.all([a.page.waitForEvent('download', { timeout: 10000 }), trigger()]);
+  assert.match(download.suggestedFilename(), /^vibezone-call-\d{4}-\d{2}-\d{2}-\d{4}\.(webm|mp4)$/);
+  const { size } = await stat(await download.path());
+  assert.ok(size > 10000, `recording is ${size} bytes`);
+  return size;
+}
+await a.page.getByTestId('record').click();
+await b.page.getByTestId('record-allow').waitFor({ timeout: 5000 });
+await b.page.getByText('Alice wants to record this call').waitFor();
+assert.equal(await a.page.getByTestId('record').isDisabled(), true); // Waiting…
+await b.page.getByTestId('record-decline').click();
+await a.page.getByText('Guest declined recording').waitFor({ timeout: 5000 });
+assert.equal(await indicator(a).count(), 0);
+assert.equal(await indicator(b).count(), 0);
+await a.page.getByTestId('record').click();
+await b.page.getByTestId('record-allow').waitFor({ timeout: 5000 });
+await b.page.setViewportSize({ width: 1280, height: 800 });
+await recShot(b, 'b-consent-dialog');
+await b.page.getByTestId('record-allow').click();
+await indicator(a).waitFor({ timeout: 5000 });
+await indicator(b).getByText('Alice is recording').waitFor({ timeout: 5000 });
+await a.page.waitForTimeout(3000);
+assert.match(await indicator(a).textContent(), /REC 00:0[2-9]/);
+await a.page.setViewportSize({ width: 1280, height: 800 });
+await recShot(a, 'a-recording-desktop');
+await b.page.setViewportSize({ width: 390, height: 844 });
+await recShot(b, 'b-phone-partner-recording');
+await a.page.setViewportSize({ width: 375, height: 812 });
+await b.page.setViewportSize({ width: 375, height: 812 });
+const size = await expectDownload(() => a.page.getByTestId('record').click());
+await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
+await indicator(b).waitFor({ state: 'detached', timeout: 5000 });
+console.log(`ok: recording needs consent (decline, then allow), both see REC, stop downloads ${size} bytes`);
+
+await a.page.getByTestId('record').click();
+await b.page.getByTestId('record-allow').click({ timeout: 5000 });
+await indicator(b).waitFor({ timeout: 5000 });
+await b.page.waitForTimeout(2000);
+await expectDownload(() => b.page.getByTestId('skip').click());
+await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
+console.log('ok: the partner skipping mid-recording still downloads it for the recorder');
+await waitStatus(a, 'Connected', 20000);
+await waitStatus(b, 'Connected', 5000);
 
 await a.page.getByTestId('skip').click();
 await waitStatus(b, 'Looking', 5000);
