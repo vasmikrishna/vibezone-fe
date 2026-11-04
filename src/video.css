@@ -366,6 +366,31 @@
   background-color: rgba(143, 71, 255, 0.85);
 }
 
+/* Split layout (preferences): partner on top, you below; side by side on desktop (see the 1024px block). */
+.stage.split > .video {
+  inset: 0 0 50% 0;
+  height: 50%;
+}
+
+.stage.split > .media-overlay {
+  bottom: 50%;
+}
+
+.stage.split .self-view {
+  top: 50%;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  aspect-ratio: auto;
+  border: 0;
+  border-top: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0;
+  box-shadow: none;
+}
+
 /* Call controls: round icon buttons; a toolbar under the stage on desktop, a floating bar on phones. */
 .controls {
   display: flex;
@@ -707,6 +732,24 @@
     font-size: 1.75rem;
   }
 
+  .stage.split > .video {
+    inset: 0 50% 0 0;
+    width: 50%;
+    height: 100%;
+  }
+
+  .stage.split > .media-overlay {
+    right: 50%;
+    bottom: 0;
+  }
+
+  .stage.split .self-view {
+    top: 0;
+    left: 50%;
+    border-top: 0;
+    border-left: 2px solid rgba(255, 255, 255, 0.22);
+  }
+
   .controls {
     grid-column: 1;
     grid-row: 2;
@@ -818,16 +861,22 @@
     max-width: calc(100% - 16px);
     margin: 0 8px 10px;
     padding: 6px;
-    gap: 4px;
+    gap: 3px;
     background: var(--glass);
     backdrop-filter: blur(12px);
     border: 1px solid var(--glass-line);
     border-radius: 28px;
   }
 
+  /* ponytail: an 8th button overflows a 375px bar; on phones set preferences before connecting. */
+  .stage.in-call ~ .controls .tip:has(.prefs-button) {
+    display: none;
+  }
+
+  /* 40px keeps the seven in-call buttons on one row at 375px. */
   .controls .round.MuiIconButton-root {
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 40px;
     color: #fff;
     background: rgba(255, 255, 255, 0.14);
     border-color: transparent;
@@ -866,7 +915,11 @@
 
   .friend-button.MuiButton-root,
   .record-button.MuiButton-root {
+    width: 40px;
+    min-width: 0;
+    height: 40px;
     padding: 0;
+    border-radius: 50%;
   }
 
   .rec-indicator {

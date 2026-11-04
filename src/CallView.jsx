@@ -10,7 +10,11 @@ import DialogActions from '@mui/material/DialogActions';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
+import FormHelperText from '@mui/material/FormHelperText';
 import Snackbar from '@mui/material/Snackbar';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import MicIcon from '@mui/icons-material/Mic';
 import MicOffIcon from '@mui/icons-material/MicOff';
 import VideocamIcon from '@mui/icons-material/Videocam';
@@ -24,8 +28,11 @@ import HowToRegOutlined from '@mui/icons-material/HowToRegOutlined';
 import FlagOutlined from '@mui/icons-material/FlagOutlined';
 import BlockOutlined from '@mui/icons-material/BlockOutlined';
 import FiberManualRecord from '@mui/icons-material/FiberManualRecord';
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import Tooltip from '@mui/material/Tooltip';
 import { getToken } from './api';
+import { usePrefs } from './prefs';
+import { supportedFormats } from './recorder';
 import './video.css';
 
 const MAX_CHAT_LENGTH = 500;
@@ -119,6 +126,57 @@ function RecordConsentDialog({ call, name }) {
   );
 }
 
+const PREF_GROUPS = [
+  ['layout', 'Screen layout', 'layout', [
+    ['focus', 'Focus — partner full screen, you in a corner'],
+    ['split', 'Split — partner on top, you below (side by side on desktop)'],
+  ]],
+  ['recordType', 'Recording — output', 'record', [['video', 'Video and audio'], ['audio', 'Audio only']]],
+  ['recordQuality', 'Recording — quality', 'quality', [['low', 'Low (smaller file)'], ['standard', 'Standard'], ['high', 'High']]],
+  ['recordFormat', 'Recording — format', 'format', [['auto', 'Automatic'], ['webm', 'WebM'], ['mp4', 'MP4']]],
+];
+
+/** Screen layout and recording type, quality and format; saved on this device. */
+function PreferencesDialog({ open, onClose }) {
+  const [prefs, setPref] = usePrefs();
+  return (
+    <Dialog open={open} onClose={onClose} aria-labelledby="preferences-title" data-testid="preferences">
+      <DialogTitle id="preferences-title">Preferences</DialogTitle>
+      <DialogContent>
+        {PREF_GROUPS.map(([key, label, id, options]) => (
+          <FormControl key={key} component="fieldset" margin="dense" fullWidth>
+            <FormLabel component="legend" id={`pref-${id}-label`}>{label}</FormLabel>
+            <RadioGroup
+              aria-labelledby={`pref-${id}-label`}
+              value={prefs[key]}
+              onChange={(e) => setPref(key, e.target.value)}
+            >
+              {options.map(([value, text]) => {
+                const off = key === 'recordFormat' && value !== 'auto' && !supportedFormats[value];
+                return (
+                  <div key={value}>
+                    <FormControlLabel
+                      value={value}
+                      disabled={off}
+                      label={text}
+                      control={<Radio inputProps={{ 'data-testid': `pref-${id}-${value}` }} />}
+                    />
+                    {off && <FormHelperText sx={{ mt: -1, ml: 4 }}>Not supported in this browser</FormHelperText>}
+                  </div>
+                );
+              })}
+            </RadioGroup>
+          </FormControl>
+        ))}
+        <FormHelperText>Recording settings apply the next time you press Record.</FormHelperText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} data-testid="preferences-close">Close</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 /** The big centred message on the stage while there is no partner video. */
 export function StageState({ pulse = false, title, sub, children }) {
   return (
@@ -143,8 +201,9 @@ export function CallVideos({ call, center, corner, extra }) {
   const announcement = useAwayAnnouncement(inCall, away, name);
   const recording = inCall && call.recording === 'recording';
   const recordText = !recording ? '' : call.recordingBy === 'me' ? 'Recording' : `${name} is recording`;
+  const [prefs] = usePrefs();
   return (
-    <div className={inCall ? 'stage in-call' : 'stage'} role="region" aria-label="Video call">
+    <div className={`stage${inCall ? ' in-call' : ''}${prefs.layout === 'split' ? ' split' : ''}`} role="region" aria-label="Video call">
       <video ref={call.remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
       {!inCall && center}
       {inCall && away === 'hold' && (
@@ -231,6 +290,7 @@ function Tip({ title, children }) {
  */
 export function CallControls({ call, idle, onHangUp, onReport, onBlock, hangUpTestId = 'hang-up', children }) {
   const inCall = call.status === 'connected';
+  const [prefsOpen, setPrefsOpen] = useState(false);
   return (
     <div className="controls" role="toolbar" aria-label="Call controls">
       <Tip title={call.micOn ? 'Mute microphone' : 'Unmute microphone'}>
@@ -263,6 +323,17 @@ export function CallControls({ call, idle, onHangUp, onReport, onBlock, hangUpTe
         </Tip>
       )}
       {children}
+      <Tip title="Preferences">
+        <IconButton
+          className="round prefs-button"
+          onClick={() => setPrefsOpen(true)}
+          aria-label="Preferences"
+          data-testid="preferences-toggle"
+        >
+          <SettingsOutlined />
+        </IconButton>
+      </Tip>
+      <PreferencesDialog open={prefsOpen} onClose={() => setPrefsOpen(false)} />
       {inCall && (
         <>
           <RecordButton call={call} />
@@ -420,8 +491,10 @@ export function ReportDialog({ open, inCall, onClose, onSubmit }) {
 }
 
 export function Notice({ call }) {
+  const phone = useMediaQuery('(max-width: 1023.98px)'); // the controls float at the bottom there
   return (
     <Snackbar
+      anchorOrigin={phone ? { vertical: 'top', horizontal: 'center' } : { vertical: 'bottom', horizontal: 'left' }}
       open={Boolean(call.notice)}
       autoHideDuration={4000}
       onClose={() => call.setNotice('')}
