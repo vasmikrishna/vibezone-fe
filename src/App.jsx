@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
 import VideoPage from './VideoPage';
 import Consent from './Consent';
@@ -12,7 +12,12 @@ import Profile from './Profile';
 import Rooms from './Rooms';
 import RoomPage from './RoomPage';
 import Dashboard from './Dashboard';
-import AppLayout, { AppPage, RequireAuth, AdminPlaceholder } from './AppLayout';
+import AppLayout, { AppPage, RequireAuth } from './AppLayout';
+import AdminOverview from './admin/Overview';
+import AdminReports from './admin/Reports';
+import AdminUsers from './admin/Users';
+import AdminBans from './admin/Bans';
+import AdminRooms from './admin/Rooms';
 import { isIOS } from './Layout';
 import { Capacitor } from '@capacitor/core';
 
@@ -48,7 +53,14 @@ export default function App() {
           <Route path="/rooms" element={<RequireAuth><Rooms /></RequireAuth>} />
           <Route path="/rooms/:id" element={<RequireAuth><RoomPage /></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-          <Route path="/admin/*" element={<RequireAuth admin><AdminPlaceholder /></RequireAuth>} />
+          <Route path="/admin" element={<RequireAuth admin><Outlet /></RequireAuth>}>
+            <Route index element={<AdminOverview />} />
+            <Route path="reports" element={<AdminReports />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="bans" element={<AdminBans />} />
+            <Route path="rooms" element={<AdminRooms />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

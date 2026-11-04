@@ -6,7 +6,8 @@
 - New Dashboard (`src/Dashboard.jsx`): greeting, streak / best streak / calls / badges stats, Start a video chat card, your upcoming rooms, badges strip and a date-of-birth banner for users who have not added it.
 - Video chat, Rooms, a room and Profile render inside the app layout with a page title; VideoPage's logo header is now a compact name / key words / Connect toolbar, and on phones the videos fill the screen between the top bar and the tabs.
 - Marketing header: phones get a menu drawer instead of a wrapped row of links; signed-in visitors see "Open app" and their avatar. Login honours a same-site `?next=` path and defaults to /dashboard; signed-out visits to /dashboard, /profile, /rooms and /admin go to `/login?next=…`.
-- Admin nav and `/admin/*` placeholder ("Coming next") for admins; everyone else is sent to /dashboard.
+- Admin nav for admins (users in the server's `ADMIN_EMAILS`); everyone else is sent to /dashboard.
+- Admin console (`src/admin/`): Overview with KPI cards, a 14-day calls / signups chart, latest open reports and 30 s auto-refresh; Reports with status tabs and a review drawer (chat transcript, Resolve / Dismiss / Reopen, Ban reported then Mark resolved); Users with debounced search, status chips and a details drawer with Ban / Lift ban; Bans with Lift ban and a ban-by-id form; Rooms with status tabs, Live chip and Cancel room. Bans, lifts and cancels are confirmed; results and API errors show in a snackbar.
 
 ## Unreleased — account sidebar and badges (#39)
 

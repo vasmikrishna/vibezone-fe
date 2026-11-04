@@ -191,17 +191,6 @@ export function AppPage({ title, actions, wide = false, children }) {
   );
 }
 
-export function AdminPlaceholder() {
-  return (
-    <AppPage title="Admin">
-      <section className="app-card" data-testid="admin-placeholder">
-        <h2>Coming next</h2>
-        <p>Admin tools for reports, users, bans and rooms are on their way.</p>
-      </section>
-    </AppPage>
-  );
-}
-
 export default function AppLayout() {
   const navigate = useNavigate();
   const token = getToken();
