@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — app shell and dashboard (#41)
+
+- New app layout (`src/AppLayout.jsx`) for /dashboard, /chat, /rooms, /rooms/:id, /profile and /admin/*: dark 256px sidebar on desktop (Main / Account / Admin groups, Badges count, user card menu with Profile, Privacy, Help, Back to website, Sign out) that collapses to a 72px icon rail (remembered); below 1024px a top bar with a menu drawer and a bottom tab bar. `/api/me` loads once and is shared. Replaces `AccountSidebar.jsx`.
+- New Dashboard (`src/Dashboard.jsx`): greeting, streak / best streak / calls / badges stats, Start a video chat card, your upcoming rooms, badges strip and a date-of-birth banner for users who have not added it.
+- Video chat, Rooms, a room and Profile render inside the app layout with a page title; VideoPage's logo header is now a compact name / key words / Connect toolbar, and on phones the videos fill the screen between the top bar and the tabs.
+- Marketing header: phones get a menu drawer instead of a wrapped row of links; signed-in visitors see "Open app" and their avatar. Login honours a same-site `?next=` path and defaults to /dashboard; signed-out visits to /dashboard, /profile, /rooms and /admin go to `/login?next=…`.
+- Admin nav and `/admin/*` placeholder ("Coming next") for admins; everyone else is sent to /dashboard.
+
 ## Unreleased — account sidebar and badges (#39)
 
 - Signed-in account sidebar (`src/AccountSidebar.jsx`) on Profile, Rooms and, from 900px wide, beside video chat: letter avatar, name, streak, phone or email, call count, and links to Video chat (not on iOS), Rooms, Profile, Privacy and Security, Badges and Sign out. Below 900px it is a compact block with a scrollable row of chips.

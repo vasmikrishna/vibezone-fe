@@ -3,16 +3,14 @@ import { Link } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
-import logo from './assets/vibezone-logo.svg';
 
 export default function Consent({ onAccept }) {
   const [adult, setAdult] = useState(false);
   const [terms, setTerms] = useState(false);
 
   return (
-    <main className="page consent">
-      <img src={logo} className="logo" alt="Vibezone" />
-      <h1>Welcome to Vibezone</h1>
+    <div className="page consent">
+      <h2>Welcome to Vibezone</h2>
       <p>
         Vibezone connects you with a random stranger for a live 1-to-1 video call.
         It is for adults only.
@@ -37,6 +35,6 @@ export default function Consent({ onAccept }) {
       <Button variant="contained" disabled={!adult || !terms} onClick={onAccept} data-testid="consent-continue">
         Continue
       </Button>
-    </main>
+    </div>
   );
 }

@@ -35,7 +35,7 @@ const QUALITY_COLORS = { High: '#4caf50', Medium: '#ff9800', Low: '#f44336' };
 /** Shown instead of the call when the camera or microphone cannot start. */
 export function MediaError({ call, onRetry }) {
   return (
-    <main className="page" data-testid="media-error">
+    <div className="page" data-testid="media-error">
       <h2>Camera and microphone needed</h2>
       <p>
         {call.mediaError === 'denied'
@@ -45,7 +45,7 @@ export function MediaError({ call, onRetry }) {
             : 'Your camera or microphone could not be started. Close other apps using it, then try again.'}
       </p>
       <Button variant="contained" onClick={onRetry} data-testid="media-retry">Try again</Button>
-    </main>
+    </div>
   );
 }
 

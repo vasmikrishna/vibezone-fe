@@ -1,8 +1,26 @@
 .site { max-width: 1100px; margin: 0 auto; }
 .site h1, .site h2, .site h3 { font-weight: 500; margin: 0 0 .5rem; }
 .site h2 { font-size: 1.5rem; text-align: center; }
-.site-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; padding: .5rem 0; }
-.site-nav { display: flex; gap: 1rem; order: 3; width: 100%; justify-content: center; }
+.site-header { display: flex; align-items: center; gap: 1rem; padding: .5rem 0; }
+.site-nav { display: none; gap: 1rem; margin-inline: auto; }
+.site-actions { display: none; align-items: center; gap: 1rem; }
+.site-actions .MuiButton-root, .site-drawer-actions .MuiButton-root { min-height: 44px; border-radius: 999px; }
+.site-hamburger.MuiIconButton-root { margin-left: auto; width: 44px; height: 44px; color: inherit; }
+.site-login { color: inherit; padding: .5rem .25rem; }
+.site-avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; font-weight: 600; color: #fff; background: #8f47ff; text-decoration: none; }
+.site-avatar:hover { text-decoration: none; background: #7a35e8; }
+.site a:focus-visible, .site-drawer a:focus-visible { outline: 3px solid #8f47ff; outline-offset: 2px; border-radius: 6px; }
+.site-drawer.MuiPaper-root { width: min(320px, 85vw); padding: 1rem; gap: 1rem; }
+.site-drawer-close.MuiIconButton-root { align-self: flex-end; width: 44px; height: 44px; }
+.site-drawer-nav { display: flex; flex-direction: column; }
+.site-drawer-nav a { display: flex; align-items: center; min-height: 48px; padding: 0 .75rem; color: #1f1f1f; border-radius: 12px; }
+.site-drawer-nav a:hover { text-decoration: none; background: #f3ecff; }
+.site-drawer-nav a.active { color: #6a2fd0; background: #f3ecff; font-weight: 600; }
+.site-drawer-actions { display: flex; align-items: center; gap: 1rem; padding: 0 .75rem; }
+@media (min-width: 768px) {
+  .site-nav, .site-actions { display: flex; }
+  .site-hamburger.MuiIconButton-root { display: none; }
+}
 .site-nav a, .site-footer a { color: #1f1f1f; font-weight: 400; padding: .5rem .25rem; }
 .site-nav a.active { color: #8f47ff; font-weight: 500; }
 .site-logo { display: flex; }
@@ -18,9 +36,6 @@
 .site-footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; }
 .site-footer a { color: #fff; }
 .site-footer p { margin: .5rem 0 0; font-size: .85rem; }
-@media (min-width: 700px) {
-  .site-nav { order: 0; width: auto; }
-}
 .form-page { max-width: 480px; margin: 0 auto; }
 .form-page h1 { text-align: left; }
 .form { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1rem; }
@@ -57,7 +72,7 @@
 /* Home: dark theme. */
 :root:has(.site-dark) { background: #0e0a18; color: #f4f0ff; color-scheme: dark; }
 .site-dark { --muted: #c4bad8; --line: rgba(255, 255, 255, .1); --panel: rgba(255, 255, 255, .04); --accent-light: #c4a0ff; }
-.site-dark .site-nav a { color: #e9e3f7; }
+.site-dark .site-nav a, .site-dark .site-login { color: #e9e3f7; }
 .site-dark .site-nav a.active { color: var(--accent-light); }
 .site-dark .site-footer { background: #17112a; border-top: 1px solid var(--line); }
 .site-dark p { color: var(--muted); }
@@ -123,41 +138,7 @@
   .feature-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* Signed-in account sidebar (Profile, Rooms, video chat) and badges. */
-.account-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-.account-layout > main { min-width: 0; }
-.account-sidebar { min-width: 0; display: flex; flex-direction: column; gap: .75rem; padding: .75rem; color: #fff; background: #171831; border-radius: 16px; }
-.account-head { display: flex; align-items: center; gap: .75rem; min-width: 0; }
-.account-avatar { flex: none; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; font-size: 1.25rem; font-weight: 600; border-radius: 50%; background: #8f47ff; box-shadow: 0 0 0 3px #fff; }
-.account-who { display: flex; flex-direction: column; min-width: 0; }
-.account-name { overflow-wrap: anywhere; }
-.account-muted { font-size: .8rem; color: #b9b9d6; }
-.account-details { display: none; list-style: none; margin: 0; padding: 0; }
-.account-details li { display: flex; align-items: center; gap: .75rem; }
-.account-details li > span { display: flex; flex-direction: column; min-width: 0; }
-.account-value { overflow-wrap: anywhere; }
-.account-nav { display: flex; gap: .5rem; overflow-x: auto; }
-.account-nav a, .account-nav button {
-  flex: none; display: flex; align-items: center; gap: .5rem; min-height: 44px; padding: 0 .875rem;
-  font: inherit; font-size: .9rem; font-weight: 400; color: #fff; text-decoration: none; white-space: nowrap;
-  background: rgba(255, 255, 255, .06); border: 0; border-radius: 999px; cursor: pointer;
-}
-.account-nav a:hover, .account-nav button:hover { text-decoration: none; background: rgba(255, 255, 255, .12); }
-.account-nav a.active { background: #33336b; }
-.account-nav a:focus-visible, .account-nav button:focus-visible { outline: 3px solid #c4a0ff; outline-offset: -3px; }
-.account-count { min-width: 1.5rem; padding: 0 .375rem; font-size: .75rem; font-weight: 600; text-align: center; background: #8f47ff; border-radius: 999px; }
-@media (min-width: 900px) {
-  .account-layout { grid-template-columns: 260px minmax(0, 1fr); gap: 2rem; }
-  .account-sidebar { gap: 1.5rem; padding: 2rem 0; }
-  .account-head { flex-direction: column; text-align: center; padding: 0 1.25rem; }
-  .account-avatar { width: 88px; height: 88px; font-size: 2.25rem; }
-  .account-name { font-size: 1.15rem; }
-  .account-details { display: flex; flex-direction: column; gap: 1rem; padding: 0 1.75rem; }
-  .account-nav { flex-direction: column; gap: 0; overflow: visible; }
-  .account-nav a, .account-nav button { padding: 0 1.5rem; font-size: 1rem; background: none; border-radius: 0; }
-  .account-count { margin-left: auto; }
-}
-
+/* Badges (dialog and profile). */
 .badges-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; border: 1px solid #ece4fb; border-radius: 12px; padding: 1rem; }
 .site .badges-row h2 { flex-basis: 100%; margin: 0; font-size: 1.1rem; text-align: left; }
 .badges-earned { display: flex; flex-wrap: wrap; gap: .5rem; flex: 1; }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -9,8 +9,8 @@ import DialogActions from '@mui/material/DialogActions';
 import { useCall } from './useCall';
 import { MediaError, CallVideos, CallControls, ChatPanel, ReportDialog, Notice } from './CallView';
 import { api, getToken, formatDate } from './api';
-import { usePageTitle } from './usePageTitle';
-import logo from './assets/vibezone-logo.svg';
+import { AppPage } from './AppLayout';
+import ArrowBack from '@mui/icons-material/ArrowBack';
 import './video.css';
 
 const JOIN_ERRORS = {
@@ -38,7 +38,6 @@ export default function RoomPage() {
   const [reportOpen, setReportOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const leftRef = useRef('');
-  usePageTitle(room ? `${room.name} - Vibezone` : 'Room - Vibezone');
 
   const call = useCall({
     failMessage: null,
@@ -73,18 +72,15 @@ export default function RoomPage() {
   });
 
   useEffect(() => {
-    if (!token) return;
     api('/rooms')
       .then((list) => setRoom(list.find((r) => r.id === id) || null))
       .catch((err) => err.status === 401 && navigate('/login', { replace: true }));
-  }, [token, id, navigate]);
+  }, [id, navigate]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  if (!token) return <Navigate to="/login" replace />;
 
   const join = () => {
     leftRef.current = '';
@@ -93,7 +89,8 @@ export default function RoomPage() {
     call.start({ type: 'roomJoin', token, roomId: id });
   };
 
-  if (call.mediaError) return <MediaError call={call} onRetry={join} />;
+  const title = room?.name || 'Room';
+  if (call.mediaError) return <AppPage title={title}><MediaError call={call} onRetry={join} /></AppPage>;
 
   const { status } = call;
   const inCall = status === 'connected';
@@ -133,12 +130,10 @@ export default function RoomPage() {
     : "You left the room and won't be able to join this host's rooms.";
 
   return (
+    <AppPage title={title} wide>
     <div className="video-page">
-      <header className="room-bar">
-        <Link to="/rooms" data-testid="room-back" aria-label="Back to rooms">
-          <img src={logo} className="logo" alt="" />
-        </Link>
-        <h1 className="room-title" data-testid="room-title">{room?.name || 'Room'}</h1>
+      <div className="room-bar">
+        <Button component={Link} to="/rooms" startIcon={<ArrowBack />} data-testid="room-back">All rooms</Button>
         <Button
           className="start-button"
           variant="contained"
@@ -149,9 +144,9 @@ export default function RoomPage() {
         >
           {idle ? 'Join room' : 'Leave'}
         </Button>
-      </header>
+      </div>
 
-      <main className="call-layout">
+      <div className="call-layout">
         <section className="call-column" aria-label="Video call">
           <CallVideos call={call} waiting={!idle} />
 
@@ -197,12 +192,7 @@ export default function RoomPage() {
         </section>
 
         <ChatPanel call={call} />
-      </main>
-
-      <footer className="footer">
-        <Link to="/terms" data-testid="footer-terms">Terms</Link>
-        <Link to="/privacy" data-testid="footer-privacy">Privacy</Link>
-      </footer>
+      </div>
 
       <ReportDialog
         open={reportOpen}
@@ -238,5 +228,6 @@ export default function RoomPage() {
 
       <Notice call={call} />
     </div>
+    </AppPage>
   );
 }

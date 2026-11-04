@@ -30,3 +30,14 @@ export async function api(path, { method = 'GET', body } = {}) {
 }
 
 export const formatDate = (iso) => new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+
+/** Same-site path to return to after login (the URL parser also catches tabs and backslashes); else the dashboard. */
+export function safeNext(next) {
+  if (typeof next !== 'string' || !next.startsWith('/') || next.startsWith('//')) return '/dashboard';
+  try {
+    const url = new URL(next, window.location.origin);
+    return url.origin === window.location.origin ? url.pathname + url.search + url.hash : '/dashboard';
+  } catch {
+    return '/dashboard';
+  }
+}
