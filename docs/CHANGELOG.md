@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — friend request after a call (#66)
+
+- After a call with a signed-in partner, the waiting panel (random chat and rooms) offers "Add <name> as a friend" for 10 minutes; it shows Request sent, Accept, or You are friends as that changes.
+- A request sent after the 10 minutes says the call ended too long ago; the panel's button goes away when you match with someone new.
+
 ## Unreleased — split layout before a call (#64)
 
 - The Split layout now applies only during a call. Before one, the Connect panel spans the whole stage again instead of being clipped to the partner half.

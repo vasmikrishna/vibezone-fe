@@ -16,6 +16,7 @@ const ERRORS = {
   'sign in to add friends': 'Sign in to add friends.',
   'partner is a guest': 'Your partner is not signed in, so you cannot add them.',
   blocked: 'You cannot add this person.',
+  'not in a call': 'That call ended more than 10 minutes ago, so you can no longer add them.',
 };
 
 function measureQuality() {
@@ -78,6 +79,11 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
   const [canAddFriend, setCanAddFriend] = useState(false); // both of you signed in
   const friendStatusRef = useRef('none');
   friendStatusRef.current = friendStatus;
+  const canAddFriendRef = useRef(false);
+  canAddFriendRef.current = canAddFriend;
+  const [lastPartner, setLastPartner] = useState(null); // { name, friendStatus } after a call with a signed-in partner
+  const lastPartnerRef = useRef(null);
+  lastPartnerRef.current = lastPartner;
   const [partnerMedia, setPartnerMedia] = useState(MEDIA_ON); // what the partner said they send
   const [remoteVideoMuted, setRemoteVideoMuted] = useState(false); // no frames arriving (older clients)
   const [hidden, setHidden] = useState(() => document.visibilityState === 'hidden');
@@ -224,6 +230,7 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
   };
 
   const closePeer = () => {
+    if (canAddFriendRef.current) setLastPartner({ name: partnerNameRef.current, friendStatus: friendStatusRef.current });
     finishRecording(); // the call ended: keep what was recorded
     setRecording('idle');
     setPartnerRecordingSince(null);
@@ -389,6 +396,7 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
       case 'matched': {
         clearTimeout(partnerLeftTimerRef.current);
         setPartnerLeft(false);
+        setLastPartner(null);
         const pc = createPeer();
         setSharedTags(Array.isArray(data.sharedTags) ? data.sharedTags : []);
         setPartnerName(typeof data.partnerName === 'string' ? data.partnerName : 'Guest');
@@ -435,16 +443,22 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
         partnerLeftTimerRef.current = setTimeout(() => setPartnerLeft(false), 2500);
         break;
       case 'friendStatus':
-        if (FRIEND_STATUSES.includes(data.status)) setFriendStatus(data.status);
+        if (!FRIEND_STATUSES.includes(data.status)) break;
+        if (pcRef.current) setFriendStatus(data.status);
+        else setLastPartner((p) => p && { ...p, friendStatus: data.status });
         break;
       case 'friendRequestReceived': {
         const who = typeof data.name === 'string' && data.name ? data.name : 'Your partner';
+        // In a call it is the current partner; otherwise the last one (the server allows 10 minutes).
+        const inCall = Boolean(pcRef.current);
+        const mine = inCall ? friendStatusRef.current : lastPartnerRef.current?.friendStatus;
+        const update = (status) => (inCall ? setFriendStatus(status) : setLastPartner((p) => p && { ...p, friendStatus: status }));
         // Both of you asked at once: the server accepts it, so you are friends.
-        if (friendStatusRef.current === 'requested') {
-          setFriendStatus('friends');
+        if (mine === 'requested') {
+          update('friends');
           setNotice(`You and ${who} are now friends.`);
         } else {
-          setFriendStatus('incoming');
+          update('incoming');
           setNotice(`${who} sent you a friend request. Accept it in Friends.`);
         }
         break;
@@ -621,7 +635,7 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
   return {
     status, mediaError, micOn, setMicOn, videoOn, setVideoOn, cameraCount, sharedTags, activeUsers,
     partnerName, messages, chatText, setChatText, partnerQuality, retrySeconds, bannedUntil, notice, setNotice,
-    streak, setStreak, friendStatus, canAddFriend, localStream, partnerLeft,
+    streak, setStreak, friendStatus, canAddFriend, lastPartner, localStream, partnerLeft,
     recording: record.state, recordingStartedAt: record.startedAt, partnerRecordingSince, recordingSupported,
     startRecording, stopRecording,
     partnerMedia: { ...partnerMedia, video: partnerMedia.video && !remoteVideoMuted },

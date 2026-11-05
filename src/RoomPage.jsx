@@ -7,7 +7,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import { useCall } from './useCall';
-import { MediaError, CallVideos, CallControls, StageState, ChatPanel, ReportDialog, Notice } from './CallView';
+import { MediaError, CallVideos, CallControls, StageState, ChatPanel, ReportDialog, Notice, LastPartnerFriend } from './CallView';
 import { api, getToken, formatDate } from './api';
 import { AppPage } from './AppLayout';
 import ArrowBack from '@mui/icons-material/ArrowBack';
@@ -151,7 +151,9 @@ export default function RoomPage() {
         <CallVideos
           call={call}
           extra={left}
-          center={<StageState pulse={!idle} title={idle ? (closed || 'Ready to join?') : statusText} sub={idle && !closed ? 'Press Join room to turn on your camera and enter.' : ''} />}
+          center={<StageState pulse={!idle} title={idle ? (closed || 'Ready to join?') : statusText} sub={idle && !closed ? 'Press Join room to turn on your camera and enter.' : ''}>
+            {!idle && <LastPartnerFriend call={call} />}
+          </StageState>}
         />
         <p className="visually-hidden" role="status" data-testid="status">{statusText}</p>
 
