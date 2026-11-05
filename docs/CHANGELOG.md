@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — split layout before a call (#64)
+
+- The Split layout now applies only during a call. Before one, the Connect panel spans the whole stage again instead of being clipped to the partner half.
+
 ## Unreleased — recording notices (#61)
 
 - Record starts at once; no consent dialog, no waiting for the partner.

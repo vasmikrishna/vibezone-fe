@@ -159,7 +159,7 @@ export function CallVideos({ call, center, corner, extra }) {
   const recordText = !recording ? '' : mine ? 'Recording' : `${name} is recording`;
   const [prefs] = usePrefs();
   return (
-    <div className={`stage${inCall ? ' in-call' : ''}${prefs.layout === 'split' ? ' split' : ''}`} role="region" aria-label="Video call">
+    <div className={`stage${inCall ? ' in-call' : ''}${inCall && prefs.layout === 'split' ? ' split' : ''}`} role="region" aria-label="Video call">
       <video ref={call.remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
       {!inCall && center}
       {inCall && away === 'hold' && (
