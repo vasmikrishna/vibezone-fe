@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — settings page (#53)
+
+- New Settings page at `/settings` (sidebar, user menu and phone tabs; no account needed) with the same call preferences as the in-call dialog: screen layout and recording output, quality and format.
+- The form is shared (`src/PreferencesForm.jsx`) by the page and the dialog, so both stay in sync through `src/prefs.js`.
+- `e2e/two-users.mjs`: checks the page saves a choice, keeps it after a reload, and takes phone and desktop screenshots when `REC_SHOT_DIR` is set.
+
 ## Unreleased — call preferences (#51)
 
 - A Preferences button (gear icon) in the call controls, on the video chat and room pages, idle or in a call, opens a dialog. On phones the gear is hidden while in a call (the floating bar is full), so set preferences before connecting; on desktop they can be changed mid-call. Choices are saved on this device (`src/prefs.js`, `localStorage.vibezonePrefs`; bad or unknown values fall back to the defaults).

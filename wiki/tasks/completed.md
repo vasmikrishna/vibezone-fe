@@ -1,4 +1,5 @@
 # Completed
+- 2026-11-05: Settings page (`/settings`) for the call preferences, no login needed (#53). See docs/CHANGELOG.md.
 - 2026-11-04: call preferences: stage layout (focus or split) and recording type, quality and format (#51). See docs/CHANGELOG.md.
 - 2026-11-04: call recording with the partner's consent, saved on the recorder's device (#48). See docs/CHANGELOG.md.
 - 2026-11-04: signed-in account sidebar and Badges dialog (#39) — done, uncommitted. See docs/CHANGELOG.md.
