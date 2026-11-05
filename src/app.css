@@ -244,3 +244,28 @@
 .dash-friends dt { font-size: .8125rem; color: #6b6b85; }
 .dash-friends dd { margin: 4px 0 0; font-size: 1.5rem; font-weight: 600; color: #1f1f1f; }
 .app-card .dash-friends + .dash-tip { margin-top: 0; }
+
+/* Preference option cards (Settings page and in-call dialog). */
+.pref-group { border: 0; margin: 0 0 18px; padding: 0; min-width: 0; }
+.pref-legend { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 0; font-weight: 600; font-size: .9375rem; color: #2b2b45; }
+.pref-legend svg { color: var(--accent, #8f47ff); }
+.pref-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.pref-card { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 38px 12px 14px; border: 1.5px solid var(--line, #e7e7f0); border-radius: 14px; background: #fff; cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s; }
+.pref-card:hover { border-color: #c9b3f5; }
+.pref-card input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.pref-card:has(input:focus-visible) { outline: 2px solid var(--accent, #8f47ff); outline-offset: 2px; }
+.pref-card:has(input:checked) { border-color: var(--accent, #8f47ff); background: #faf7ff; box-shadow: 0 0 0 1px var(--accent, #8f47ff) inset; }
+.pref-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; background: #f1ecfb; color: var(--accent, #8f47ff); }
+.pref-card:has(input:checked) .pref-icon { background: var(--accent, #8f47ff); color: #fff; }
+.pref-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pref-text strong { font-size: .9375rem; font-weight: 600; }
+.pref-text small { font-size: .8rem; color: #6b6b85; line-height: 1.3; }
+.pref-check { position: absolute; top: 10px; right: 10px; color: var(--accent, #8f47ff); opacity: 0; transition: opacity .15s; }
+.pref-card:has(input:checked) .pref-check { opacity: 1; }
+.pref-card.off { opacity: .55; cursor: not-allowed; }
+.pref-card.off input { cursor: not-allowed; }
+.pref-note { margin-top: 4px; color: #6b6b85; }
+.settings-head { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--line, #e7e7f0); }
+.settings-head-icon { display: grid; place-items: center; width: 48px; height: 48px; flex: none; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #6a2fd0, #8f47ff); }
+.settings-head h2 { margin: 0 0 2px; font-size: 1.125rem; }
+.settings-page { max-width: 760px; }

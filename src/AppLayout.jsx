@@ -28,6 +28,7 @@ import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import ChevronRight from '@mui/icons-material/ChevronRight';
 import HomeOutlined from '@mui/icons-material/HomeOutlined';
 import PersonOutline from '@mui/icons-material/PersonOutline';
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import PeopleAltOutlined from '@mui/icons-material/PeopleAltOutlined';
 import { api, getToken, clearToken } from './api';
 import { isIOS } from './Layout';
@@ -105,6 +106,7 @@ function SidebarContents({ collapsed = false, onNavigate, onToggle }) {
       !isIOS && { to: '/chat', label: 'Video chat', Icon: VideocamOutlined, id: 'chat' },
       { to: '/rooms', label: 'Rooms', Icon: MeetingRoomOutlined, id: 'rooms' },
       signedIn && { to: '/friends', label: 'Friends', Icon: PeopleAltOutlined, id: 'friends', count: friendRequests, countLabel: 'friend requests' },
+      { to: '/settings', label: 'Settings', Icon: SettingsOutlined, id: 'settings' },
     ]],
     signedIn && ['Account', [
       'badges',
@@ -276,6 +278,7 @@ export default function AppLayout() {
   };
   const menuLinks = [
     ['/profile', 'Profile & settings', TuneOutlined, 'profile'],
+    ['/settings', 'Settings', SettingsOutlined, 'settings'],
     ['/privacy', 'Privacy & security', LockOutlined, 'privacy'],
     ['/contact', 'Help', HelpOutline, 'help'],
     ['/', 'Back to website', Language, 'website'],
@@ -284,6 +287,7 @@ export default function AppLayout() {
     signedIn ? ['/dashboard', 'Home', HomeOutlined, 'home'] : ['/', 'Home', HomeOutlined, 'home'],
     !isIOS && ['/chat', 'Chat', VideocamOutlined, 'chat'],
     ['/rooms', 'Rooms', MeetingRoomOutlined, 'rooms'],
+    ['/settings', 'Settings', SettingsOutlined, 'settings'],
     signedIn ? ['/profile', 'Profile', PersonOutline, 'profile'] : ['/login', 'Log in', Login, 'login'],
   ].filter(Boolean);
 

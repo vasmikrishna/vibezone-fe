@@ -13,6 +13,7 @@ import Rooms from './Rooms';
 import RoomPage from './RoomPage';
 import Dashboard from './Dashboard';
 import Friends from './Friends';
+import Settings from './Settings';
 import AppLayout, { AppPage, RequireAuth } from './AppLayout';
 import AdminOverview from './admin/Overview';
 import AdminReports from './admin/Reports';
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route element={<AppLayout />}>
+          <Route path="/settings" element={<Settings />} />
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/chat" element={isIOS ? <Navigate to="/rooms" replace /> : <Chat />} />
           <Route path="/rooms" element={<RequireAuth><Rooms /></RequireAuth>} />

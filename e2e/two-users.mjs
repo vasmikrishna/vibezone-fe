@@ -249,6 +249,25 @@ for (const p of ['about', 'contact']) {
 await site.close();
 console.log('ok: home, about, contact render; Start chatting opens /chat');
 
+const settingsCtx = await browser.newContext({ viewport: { width: 375, height: 812 } });
+const sp = await settingsCtx.newPage();
+const settingsUrl = new URL('/settings', home).href;
+await sp.goto(settingsUrl);
+await sp.getByTestId('settings-page').waitFor();
+await sp.getByTestId('pref-layout-split').check();
+await sp.reload();
+await sp.getByTestId('settings-page').waitFor();
+assert.ok(await sp.getByTestId('pref-layout-split').isChecked(), 'settings: split layout kept after reload');
+if (recShots) await sp.screenshot({ path: `${recShots}/settings-phone.png` });
+await sp.setViewportSize({ width: 1280, height: 800 });
+await sp.reload(); // the phone drawer layout does not re-flow on a resize alone
+await sp.getByTestId('settings-page').waitFor();
+assert.ok(await sp.getByTestId('pref-layout-split').isChecked(), 'settings: split layout kept on desktop too');
+if (recShots) await sp.screenshot({ path: `${recShots}/settings-desktop.png` });
+await sp.getByTestId('pref-layout-focus').check();
+await settingsCtx.close();
+console.log('ok: settings page saves preferences and keeps them after a reload');
+
 const secondTab = await a.context.newPage();
 await secondTab.goto(url);
 await secondTab.getByTestId('start-stop').click();
