@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — preferences Save button (#58)
+
+- Preferences on the Settings page and in the in-call dialog now apply only when you press Save; the Settings page confirms with a "Preferences saved" message.
+- Cancel in the in-call dialog drops unsaved changes; the dialog starts from the saved preferences each time it opens.
+
 ## Unreleased — consent screen (#56)
 
 - Signed-in adults skip the 18+ and terms screen before video chat; login already asks for both.

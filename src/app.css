@@ -274,3 +274,6 @@
 .settings-head-icon { display: grid; place-items: center; width: 48px; height: 48px; flex: none; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #6a2fd0, #8f47ff); }
 .settings-head h2 { margin: 0 0 2px; font-size: 1.125rem; }
 .settings-page { max-width: 760px; }
+.settings-actions { display: flex; justify-content: flex-end; margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--line, #e7e7f0); }
+.settings-actions .MuiButton-root { border-radius: 999px; min-width: 120px; }
+@media (max-width: 1023.98px) { .settings-actions .MuiButton-root { width: 100%; } }

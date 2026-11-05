@@ -12,7 +12,6 @@ import MovieOutlined from '@mui/icons-material/MovieOutlined';
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined';
 import TheatersOutlined from '@mui/icons-material/TheatersOutlined';
 import CheckCircle from '@mui/icons-material/CheckCircle';
-import { usePrefs } from './prefs';
 import { supportedFormats } from './recorder';
 
 const PREF_GROUPS = [
@@ -37,27 +36,26 @@ const PREF_GROUPS = [
   ]],
 ];
 
-/** Screen layout and recording type, quality and format; saved on this device. */
-export default function PreferencesForm() {
-  const [prefs, setPref] = usePrefs();
+/** Screen layout and recording type, quality and format; controlled: the parent saves. */
+export default function PreferencesForm({ value, onChange }) {
   return (
     <>
       {PREF_GROUPS.map(([key, label, id, GroupIcon, options]) => (
         <fieldset key={key} className="pref-group" data-testid={`pref-group-${id}`}>
           <legend className="pref-legend"><GroupIcon fontSize="small" />{label}</legend>
           <div className="pref-options">
-            {options.map(([value, title, sub, Icon]) => {
-              const off = key === 'recordFormat' && value !== 'auto' && !supportedFormats[value];
+            {options.map(([v, title, sub, Icon]) => {
+              const off = key === 'recordFormat' && v !== 'auto' && !supportedFormats[v];
               return (
-                <label key={value} className={`pref-card${off ? ' off' : ''}`}>
+                <label key={v} className={`pref-card${off ? ' off' : ''}`}>
                   <input
                     type="radio"
                     name={key}
-                    value={value}
-                    checked={prefs[key] === value}
+                    value={v}
+                    checked={value[key] === v}
                     disabled={off}
-                    onChange={() => setPref(key, value)}
-                    data-testid={`pref-${id}-${value}`}
+                    onChange={() => onChange(key, v)}
+                    data-testid={`pref-${id}-${v}`}
                   />
                   <span className="pref-icon"><Icon /></span>
                   <span className="pref-text">

@@ -127,14 +127,31 @@ function RecordConsentDialog({ call, name }) {
 function PreferencesDialog({ open, onClose }) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth aria-labelledby="preferences-title" data-testid="preferences">
+      <PreferencesBody onClose={onClose} />
+    </Dialog>
+  );
+}
+
+/** Mounts with the dialog, so the draft starts from the saved preferences on every open. */
+function PreferencesBody({ onClose }) {
+  const [saved, savePrefs] = usePrefs();
+  const [draft, setDraft] = useState(saved);
+  const dirty = Object.keys(draft).some((k) => draft[k] !== saved[k]);
+  const save = () => {
+    savePrefs(draft);
+    onClose();
+  };
+  return (
+    <>
       <DialogTitle id="preferences-title">Preferences</DialogTitle>
       <DialogContent>
-        <PreferencesForm />
+        <PreferencesForm value={draft} onChange={(k, v) => setDraft((d) => ({ ...d, [k]: v }))} />
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} data-testid="preferences-close">Close</Button>
+        <Button onClick={onClose} data-testid="preferences-close">Cancel</Button>
+        <Button variant="contained" disableElevation disabled={!dirty} onClick={save} data-testid="preferences-save">Save</Button>
       </DialogActions>
-    </Dialog>
+    </>
   );
 }
 

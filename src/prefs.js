@@ -1,4 +1,4 @@
-// Call preferences kept in localStorage; every component using usePrefs sees a change at once.
+// Call preferences kept in localStorage; savePrefs applies a patch and every component using usePrefs sees it at once.
 import { useSyncExternalStore } from 'react';
 
 export const DEFAULT_PREFS = { layout: 'focus', recordType: 'video', recordQuality: 'standard', recordFormat: 'auto' };
@@ -31,9 +31,10 @@ const subscribe = (fn) => {
   return () => listeners.delete(fn);
 };
 
-function setPref(key, value) {
-  if (!ALLOWED[key]?.includes(value)) return;
-  current = { ...current, [key]: value };
+function savePrefs(patch) {
+  const next = { ...current };
+  for (const key of Object.keys(patch)) if (ALLOWED[key]?.includes(patch[key])) next[key] = patch[key];
+  current = next;
   try {
     localStorage.setItem(KEY, JSON.stringify(current));
   } catch {
@@ -43,5 +44,5 @@ function setPref(key, value) {
 }
 
 export function usePrefs() {
-  return [useSyncExternalStore(subscribe, () => current), setPref];
+  return [useSyncExternalStore(subscribe, () => current), savePrefs];
 }

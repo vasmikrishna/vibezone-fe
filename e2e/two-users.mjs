@@ -168,7 +168,8 @@ const setPrefs = async (u, ids, shot) => {
   await u.page.getByTestId('preferences').waitFor();
   for (const id of ids) await u.page.getByTestId(id).check();
   if (shot) await recShot(u, shot);
-  await u.page.getByTestId('preferences-close').click();
+  const save = u.page.getByTestId('preferences-save');
+  await ((await save.isEnabled()) ? save : u.page.getByTestId('preferences-close')).click(); // Save is disabled when nothing changed
   await u.page.getByTestId('preferences').waitFor({ state: 'detached' });
   await u.page.setViewportSize({ width: 375, height: 812 });
   await u.page.waitForTimeout(300);
@@ -279,6 +280,12 @@ await sp.getByTestId('settings-page').waitFor();
 await sp.getByTestId('pref-layout-split').check();
 await sp.reload();
 await sp.getByTestId('settings-page').waitFor();
+assert.ok(await sp.getByTestId('pref-layout-focus').isChecked(), 'settings: nothing kept before Save');
+await sp.getByTestId('pref-layout-split').check();
+await sp.getByTestId('settings-save').click();
+await sp.getByTestId('settings-saved').waitFor();
+await sp.reload();
+await sp.getByTestId('settings-page').waitFor();
 assert.ok(await sp.getByTestId('pref-layout-split').isChecked(), 'settings: split layout kept after reload');
 if (recShots) await sp.screenshot({ path: `${recShots}/settings-phone.png` });
 await sp.setViewportSize({ width: 1280, height: 800 });
@@ -287,8 +294,9 @@ await sp.getByTestId('settings-page').waitFor();
 assert.ok(await sp.getByTestId('pref-layout-split').isChecked(), 'settings: split layout kept on desktop too');
 if (recShots) await sp.screenshot({ path: `${recShots}/settings-desktop.png` });
 await sp.getByTestId('pref-layout-focus').check();
+await sp.getByTestId('settings-save').click();
 await settingsCtx.close();
-console.log('ok: settings page saves preferences and keeps them after a reload');
+console.log('ok: settings page keeps a choice only after Save, also after a reload');
 
 const secondTab = await a.context.newPage();
 await secondTab.goto(url);
