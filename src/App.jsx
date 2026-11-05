@@ -14,7 +14,7 @@ import RoomPage from './RoomPage';
 import Dashboard from './Dashboard';
 import Friends from './Friends';
 import Settings from './Settings';
-import AppLayout, { AppPage, RequireAuth } from './AppLayout';
+import AppLayout, { AppPage, RequireAuth, useApp } from './AppLayout';
 import AdminOverview from './admin/Overview';
 import AdminReports from './admin/Reports';
 import AdminUsers from './admin/Users';
@@ -23,9 +23,11 @@ import AdminRooms from './admin/Rooms';
 import { isIOS } from './Layout';
 import { Capacitor } from '@capacitor/core';
 
-const CONSENT_VERSION = 3; // 3: call recording with consent
+// Bump to show the gate again. 3: call recording with consent. 4: recording no longer asks. Signed-in adults skip it: login already asks for 18+ and the Terms.
+const CONSENT_VERSION = 4;
 
 function Chat() {
+  const { me } = useApp();
   const [consented, setConsented] = useState(
     Number(localStorage.getItem('vibezoneConsent')) === CONSENT_VERSION
   );
@@ -33,7 +35,8 @@ function Chat() {
     localStorage.setItem('vibezoneConsent', String(CONSENT_VERSION));
     setConsented(true);
   };
-  return consented ? <VideoPage /> : <AppPage title="Video chat"><Consent onAccept={accept} /></AppPage>;
+  if (!consented && me === undefined) return null; // user still loading; avoids a flash of the card
+  return consented || me?.adult ? <VideoPage /> : <AppPage title="Video chat"><Consent onAccept={accept} /></AppPage>;
 }
 
 export default function App() {

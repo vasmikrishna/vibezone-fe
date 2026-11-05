@@ -50,15 +50,6 @@ body {
   gap: 0.5rem;
 }
 
-.consent {
-  align-items: center;
-  text-align: center;
-}
-
-.consent .logo {
-  height: 4rem;
-}
-
 h1 {
   font-size: 1.75rem;
   line-height: 1.2;

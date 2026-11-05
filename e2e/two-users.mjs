@@ -1,7 +1,7 @@
 // Two to three real browsers with fake cameras against a running frontend and backend.
 // Usage: node e2e/two-users.mjs [frontendUrl]   Set CHROMIUM_PATH to use an existing Chromium.
 import assert from 'node:assert/strict';
-import { stat } from 'node:fs/promises';
+import { copyFile, readFile, stat } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const url = process.argv[2] || 'http://localhost:5173/chat';
@@ -107,7 +107,7 @@ await setHidden(a, false);
 await b.page.getByTestId('remote-on-hold').waitFor({ state: 'detached', timeout: 5000 });
 console.log('ok: partner sees camera off, mic off and on hold, and each clears again');
 
-const recShots = process.env.REC_SHOT_DIR; // optional: consent dialog, REC badge on desktop, partner view on a phone
+const recShots = process.env.REC_SHOT_DIR; // optional: REC badge on desktop, preferences, layouts
 const recShot = async (u, name) => {
   if (!recShots) return;
   await u.page.waitForTimeout(800); // let the layout settle after a viewport change
@@ -117,41 +117,28 @@ const indicator = (u) => u.page.getByTestId('rec-indicator');
 async function expectDownload(trigger, minSize = 10000) {
   const [download] = await Promise.all([a.page.waitForEvent('download', { timeout: 10000 }), trigger()]);
   assert.match(download.suggestedFilename(), /^vibezone-call-\d{4}-\d{2}-\d{2}-\d{4}\.(webm|mp4|m4a)$/);
-  const { size } = await stat(await download.path());
+  const path = await download.path();
+  const { size } = await stat(path);
   assert.ok(size > minSize, `recording is ${size} bytes`);
-  return { size, name: download.suggestedFilename() };
+  return { size, name: download.suggestedFilename(), path };
 }
 await a.page.getByTestId('record').click();
-await b.page.getByTestId('record-allow').waitFor({ timeout: 5000 });
-await b.page.getByText('Alice wants to record this call').waitFor();
-assert.equal(await a.page.getByTestId('record').isDisabled(), true); // Waiting…
-await b.page.getByTestId('record-decline').click();
-await a.page.getByText('Guest declined recording').waitFor({ timeout: 5000 });
-assert.equal(await indicator(a).count(), 0);
-assert.equal(await indicator(b).count(), 0);
-await a.page.getByTestId('record').click();
-await b.page.getByTestId('record-allow').waitFor({ timeout: 5000 });
-await b.page.setViewportSize({ width: 1280, height: 800 });
-await recShot(b, 'b-consent-dialog');
-await b.page.getByTestId('record-allow').click();
 await indicator(a).waitFor({ timeout: 5000 });
-await indicator(b).getByText('Alice is recording').waitFor({ timeout: 5000 });
+await a.page.waitForTimeout(1000);
+assert.equal(await indicator(b).count(), 0); // a guest partner is told nothing
+assert.equal(await b.page.getByText('Alice is recording').count(), 0);
 await a.page.waitForTimeout(3000);
 assert.match(await indicator(a).textContent(), /REC 00:0[2-9]/);
 await a.page.setViewportSize({ width: 1280, height: 800 });
 await recShot(a, 'a-recording-desktop');
-await b.page.setViewportSize({ width: 390, height: 844 });
-await recShot(b, 'b-phone-partner-recording');
 await a.page.setViewportSize({ width: 375, height: 812 });
 await b.page.setViewportSize({ width: 375, height: 812 });
 const { size } = await expectDownload(() => a.page.getByTestId('record').click());
 await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
-await indicator(b).waitFor({ state: 'detached', timeout: 5000 });
-console.log(`ok: recording needs consent (decline, then allow), both see REC, stop downloads ${size} bytes`);
+console.log(`ok: Record starts at once, the guest partner is told nothing, stop downloads ${size} bytes`);
 
 await a.page.getByTestId('record').click();
-await b.page.getByTestId('record-allow').click({ timeout: 5000 });
-await indicator(b).waitFor({ timeout: 5000 });
+await indicator(a).waitFor({ timeout: 5000 }); // b is a guest, so only a sees the badge
 await b.page.waitForTimeout(2000);
 await expectDownload(() => b.page.getByTestId('skip').click());
 await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
@@ -167,7 +154,8 @@ const setPrefs = async (u, ids, shot) => {
   await u.page.getByTestId('preferences').waitFor();
   for (const id of ids) await u.page.getByTestId(id).check();
   if (shot) await recShot(u, shot);
-  await u.page.getByTestId('preferences-close').click();
+  const save = u.page.getByTestId('preferences-save');
+  await ((await save.isEnabled()) ? save : u.page.getByTestId('preferences-close')).click(); // Save is disabled when nothing changed
   await u.page.getByTestId('preferences').waitFor({ state: 'detached' });
   await u.page.setViewportSize({ width: 375, height: 812 });
   await u.page.waitForTimeout(300);
@@ -194,7 +182,6 @@ assert.ok(local.x >= remote.x && local.y >= remote.y && local.x + local.width <=
 
 await setPrefs(a, ['pref-record-audio', 'pref-format-webm']);
 await a.page.getByTestId('record').click();
-await b.page.getByTestId('record-allow').click({ timeout: 5000 });
 await indicator(a).waitFor({ timeout: 5000 });
 await a.page.waitForTimeout(2000);
 const audioFile = await expectDownload(() => a.page.getByTestId('record').click(), 5000);
@@ -202,6 +189,25 @@ assert.match(audioFile.name, /\.webm$/);
 await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
 await setPrefs(a, ['pref-record-video']);
 console.log('ok: preferences: split layout stacks on phones and sits side by side on desktop; audio-only WebM recording downloads');
+
+await setPrefs(a, ['pref-record-reel', 'pref-format-auto'], 'a-preferences-reel');
+await a.page.getByTestId('record').click();
+await indicator(a).waitFor({ timeout: 5000 });
+await a.page.waitForTimeout(2000);
+const reelFile = await expectDownload(() => a.page.getByTestId('record').click());
+assert.match(reelFile.name, /\.(mp4|webm)$/);
+assert.ok(reelFile.size > 10000, `reel file is ${reelFile.size} bytes`);
+const [rw, rh] = await a.page.evaluate(async (bytes) => { // the browser reads the frame size from the file itself
+  const v = document.createElement('video');
+  v.src = URL.createObjectURL(new Blob([new Uint8Array(bytes)]));
+  await new Promise((ok, fail) => { v.onloadedmetadata = ok; v.onerror = fail; });
+  return [v.videoWidth, v.videoHeight];
+}, [...await readFile(reelFile.path)]);
+assert.deepEqual([rw, rh], [720, 1280], `reel is ${rw}x${rh}`);
+if (recShots) await copyFile(reelFile.path, `${recShots}/reel.${reelFile.name.split('.').pop()}`);
+await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
+await setPrefs(a, ['pref-record-video']);
+console.log(`ok: reel recording is 720x1280 (${reelFile.name.split('.').pop()})`);
 
 await a.page.getByTestId('skip').click();
 await waitStatus(b, 'Looking', 5000);
@@ -242,6 +248,7 @@ await site.goto(home);
 await site.getByTestId('hero-start').click();
 await site.waitForURL('**/chat');
 await site.getByTestId('consent-continue').waitFor();
+if (process.env.REC_SHOT_DIR) await site.screenshot({ path: `${process.env.REC_SHOT_DIR}/consent-phone.png` });
 for (const p of ['about', 'contact']) {
   await site.goto(new URL(`/${p}`, home).href);
   assert.ok(await site.evaluate(() => document.documentElement.scrollWidth <= 375), `${p}: no horizontal scroll`);
@@ -257,6 +264,12 @@ await sp.getByTestId('settings-page').waitFor();
 await sp.getByTestId('pref-layout-split').check();
 await sp.reload();
 await sp.getByTestId('settings-page').waitFor();
+assert.ok(await sp.getByTestId('pref-layout-focus').isChecked(), 'settings: nothing kept before Save');
+await sp.getByTestId('pref-layout-split').check();
+await sp.getByTestId('settings-save').click();
+await sp.getByTestId('settings-saved').waitFor();
+await sp.reload();
+await sp.getByTestId('settings-page').waitFor();
 assert.ok(await sp.getByTestId('pref-layout-split').isChecked(), 'settings: split layout kept after reload');
 if (recShots) await sp.screenshot({ path: `${recShots}/settings-phone.png` });
 await sp.setViewportSize({ width: 1280, height: 800 });
@@ -265,8 +278,9 @@ await sp.getByTestId('settings-page').waitFor();
 assert.ok(await sp.getByTestId('pref-layout-split').isChecked(), 'settings: split layout kept on desktop too');
 if (recShots) await sp.screenshot({ path: `${recShots}/settings-desktop.png` });
 await sp.getByTestId('pref-layout-focus').check();
+await sp.getByTestId('settings-save').click();
 await settingsCtx.close();
-console.log('ok: settings page saves preferences and keeps them after a reload');
+console.log('ok: settings page keeps a choice only after Save, also after a reload');
 
 const secondTab = await a.context.newPage();
 await secondTab.goto(url);

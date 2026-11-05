@@ -45,7 +45,7 @@ async function openUser(token, viewport) {
   await context.addInitScript((t) => {
     localStorage.setItem('vibezoneToken', t);
     localStorage.setItem('hasSeenOnboarding', 'true');
-    localStorage.setItem('vibezoneConsent', '3');
+    localStorage.setItem('vibezoneConsent', '4');
   }, token);
   const page = await context.newPage();
   page.on('pageerror', (e) => errors.push(e.message));
