@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Instagram Reel recording (#55)
+
+- New recording output "Instagram Reel": a vertical 9:16 video (540×960, 720×1280 or 1080×1920 by quality) with the partner on top and you below.
+- Reels prefer MP4 (H.264 + AAC when the browser can) so they upload to Instagram as is; WebM when MP4 is not supported.
+
 ## Unreleased — settings page (#53)
 
 - New Settings page at `/settings` (sidebar, user menu and phone tabs; no account needed) with the same call preferences as the in-call dialog: screen layout and recording output, quality and format.

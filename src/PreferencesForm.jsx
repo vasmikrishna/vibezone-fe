@@ -2,6 +2,7 @@ import CropFreeOutlined from '@mui/icons-material/CropFreeOutlined';
 import FullscreenOutlined from '@mui/icons-material/FullscreenOutlined';
 import SplitscreenOutlined from '@mui/icons-material/SplitscreenOutlined';
 import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
+import SmartphoneOutlined from '@mui/icons-material/SmartphoneOutlined';
 import MicOutlined from '@mui/icons-material/MicOutlined';
 import HighQualityOutlined from '@mui/icons-material/HighQualityOutlined';
 import DataSaverOnOutlined from '@mui/icons-material/DataSaverOnOutlined';
@@ -20,13 +21,14 @@ const PREF_GROUPS = [
     ['split', 'Split', 'Partner on top, you below (side by side on desktop)', SplitscreenOutlined],
   ]],
   ['recordType', 'Recording output', 'record', VideocamOutlined, [
-    ['video', 'Video + audio', 'Records both camera views and voices', VideocamOutlined],
+    ['video', 'Video + audio', 'Both camera views side by side, 16:9', VideocamOutlined],
+    ['reel', 'Instagram Reel', 'Vertical 9:16 MP4, partner on top and you below. Ready to upload', SmartphoneOutlined],
     ['audio', 'Audio only', 'Smaller file, voices only', MicOutlined],
   ]],
   ['recordQuality', 'Recording quality', 'quality', HighQualityOutlined, [
-    ['low', 'Low', '640p, smallest file', DataSaverOnOutlined],
-    ['standard', 'Standard', '1280p, balanced', BalanceOutlined],
-    ['high', 'High', '1920p, largest file', HdOutlined],
+    ['low', 'Low', 'Smallest file', DataSaverOnOutlined],
+    ['standard', 'Standard', 'Balanced size and detail', BalanceOutlined],
+    ['high', 'High', 'Sharpest, largest file', HdOutlined],
   ]],
   ['recordFormat', 'Recording format', 'format', MovieOutlined, [
     ['auto', 'Automatic', 'Best this browser supports', AutoAwesomeOutlined],

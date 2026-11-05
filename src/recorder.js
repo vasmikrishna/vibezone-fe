@@ -1,10 +1,10 @@
-// Records a call on this device only: both videos side by side on a canvas (or audio only) plus both voices mixed.
+// Records a call on this device only: both videos side by side on a canvas, stacked 9:16 for a reel, or audio only; plus both voices mixed.
 const QUALITY = {
-  low: { width: 640, height: 240, video: 1_000_000 },
-  standard: { width: 1280, height: 480, video: 2_500_000 },
-  high: { width: 1920, height: 720, video: 5_000_000 },
+  low: { width: 640, height: 240, video: 1_000_000, reel: { width: 540, height: 960 } },
+  standard: { width: 1280, height: 480, video: 2_500_000, reel: { width: 720, height: 1280 } },
+  high: { width: 1920, height: 720, video: 5_000_000, reel: { width: 1080, height: 1920 } },
 };
-const MIME_TYPES = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
+const MIME_TYPES = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4'];
 const AUDIO_TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
 const AudioCtx = typeof window !== 'undefined' ? window.AudioContext || window.webkitAudioContext : undefined;
 
@@ -30,47 +30,49 @@ function fileName(date, ext) {
 }
 
 /** Draws a video into a tile like object-fit: cover, or a dark tile with the person's initial. */
-function drawTile(ctx, x, tile, height, video, on, name) {
-  const k = height / 480; // fonts and circle scale with the quality
+function drawTile(ctx, x, y, w, h, video, on, name) {
+  const k = h / 480; // fonts and circle scale with the tile
   const vw = video?.videoWidth;
   const vh = video?.videoHeight;
   if (on && vw && vh) {
-    const scale = Math.max(tile / vw, height / vh);
-    const sw = tile / scale;
-    const sh = height / scale;
-    ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, x, 0, tile, height);
+    const scale = Math.max(w / vw, h / vh);
+    const sw = w / scale;
+    const sh = h / scale;
+    ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, x, y, w, h);
   } else {
     ctx.fillStyle = '#1b1530';
-    ctx.fillRect(x, 0, tile, height);
+    ctx.fillRect(x, y, w, h);
     ctx.fillStyle = '#8f47ff';
     ctx.beginPath();
-    ctx.arc(x + tile / 2, height / 2, 56 * k, 0, Math.PI * 2);
+    ctx.arc(x + w / 2, y + h / 2, 56 * k, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.font = `bold ${Math.round(56 * k)}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText((name.charAt(0) || '?').toUpperCase(), x + tile / 2, height / 2 + 2 * k);
+    ctx.fillText((name.charAt(0) || '?').toUpperCase(), x + w / 2, y + h / 2 + 2 * k);
   }
   ctx.font = `600 ${Math.round(18 * k)}px system-ui, sans-serif`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
-  const width = ctx.measureText(name).width + 20 * k;
+  const labelWidth = ctx.measureText(name).width + 20 * k;
   ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-  ctx.fillRect(x + 12 * k, height - 44 * k, width, 30 * k);
+  ctx.fillRect(x + 12 * k, y + h - 44 * k, labelWidth, 30 * k);
   ctx.fillStyle = '#fff';
-  ctx.fillText(name, x + 22 * k, height - 23 * k);
+  ctx.fillText(name, x + 22 * k, y + h - 23 * k);
 }
 
 /**
  * Starts recording. partner/me: { video: HTMLVideoElement, stream: MediaStream, name, videoOn: () => boolean }.
- * type 'video' | 'audio', quality 'low' | 'standard' | 'high', format 'auto' | 'webm' | 'mp4' (falls back to auto).
+ * type 'video' | 'reel' (vertical 9:16, partner on top, MP4 preferred) | 'audio', quality 'low' | 'standard' | 'high', format 'auto' | 'webm' | 'mp4' (falls back to auto).
  * Returns { finish() } which stops, downloads the file and resolves with its size in bytes. Throws if it cannot start.
  */
 export function startRecorder({ partner, me, type = 'video', quality = 'standard', format = 'auto' }) {
   const startedAt = new Date();
   const audioOnly = type === 'audio';
-  const mime = pickMime(audioOnly ? AUDIO_TYPES : MIME_TYPES, format);
+  const reel = type === 'reel';
+  const mime = audioOnly ? pickMime(AUDIO_TYPES, format)
+    : pickMime(MIME_TYPES, reel && format === 'auto' ? 'mp4' : format); // Instagram takes MP4 as is
 
   const audio = new AudioCtx();
   audio.resume().catch(() => {});
@@ -81,7 +83,8 @@ export function startRecorder({ partner, me, type = 'video', quality = 'standard
   }
 
   const q = QUALITY[quality] || QUALITY.standard;
-  const stopDrawing = audioOnly ? () => {} : drawCanvas(partner, me, q);
+  const size = reel ? q.reel : q;
+  const stopDrawing = audioOnly ? () => {} : drawCanvas(partner, me, size, reel);
   const stream = audioOnly ? mix.stream
     : new MediaStream([...stopDrawing.stream.getVideoTracks(), ...mix.stream.getAudioTracks()]);
 
@@ -133,16 +136,20 @@ export function startRecorder({ partner, me, type = 'video', quality = 'standard
 }
 
 /** Draws both tiles onto a canvas every frame; returns a stop function with the canvas stream on it. */
-function drawCanvas(partner, me, { width, height }) {
-  const tile = width / 2;
+function drawCanvas(partner, me, { width, height }, reel) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   const draw = () => {
-    drawTile(ctx, 0, tile, height, partner.video, partner.videoOn(), partner.name);
-    drawTile(ctx, tile, tile, height, me.video, me.videoOn(), me.name);
-    const k = height / 480;
+    if (reel) {
+      drawTile(ctx, 0, 0, width, height / 2, partner.video, partner.videoOn(), partner.name);
+      drawTile(ctx, 0, height / 2, width, height / 2, me.video, me.videoOn(), me.name);
+    } else {
+      drawTile(ctx, 0, 0, width / 2, height, partner.video, partner.videoOn(), partner.name);
+      drawTile(ctx, width / 2, 0, width / 2, height, me.video, me.videoOn(), me.name);
+    }
+    const k = reel ? width / 720 : height / 480;
     ctx.font = `600 ${Math.round(16 * k)}px system-ui, sans-serif`;
     ctx.textAlign = 'right';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';

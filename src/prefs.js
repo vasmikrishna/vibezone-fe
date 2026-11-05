@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react';
 export const DEFAULT_PREFS = { layout: 'focus', recordType: 'video', recordQuality: 'standard', recordFormat: 'auto' };
 const ALLOWED = {
   layout: ['focus', 'split'],
-  recordType: ['video', 'audio'],
+  recordType: ['video', 'reel', 'audio'],
   recordQuality: ['low', 'standard', 'high'],
   recordFormat: ['auto', 'webm', 'mp4'],
 };

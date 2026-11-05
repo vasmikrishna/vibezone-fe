@@ -1,7 +1,7 @@
 // Two to three real browsers with fake cameras against a running frontend and backend.
 // Usage: node e2e/two-users.mjs [frontendUrl]   Set CHROMIUM_PATH to use an existing Chromium.
 import assert from 'node:assert/strict';
-import { stat } from 'node:fs/promises';
+import { copyFile, readFile, stat } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const url = process.argv[2] || 'http://localhost:5173/chat';
@@ -117,9 +117,10 @@ const indicator = (u) => u.page.getByTestId('rec-indicator');
 async function expectDownload(trigger, minSize = 10000) {
   const [download] = await Promise.all([a.page.waitForEvent('download', { timeout: 10000 }), trigger()]);
   assert.match(download.suggestedFilename(), /^vibezone-call-\d{4}-\d{2}-\d{2}-\d{4}\.(webm|mp4|m4a)$/);
-  const { size } = await stat(await download.path());
+  const path = await download.path();
+  const { size } = await stat(path);
   assert.ok(size > minSize, `recording is ${size} bytes`);
-  return { size, name: download.suggestedFilename() };
+  return { size, name: download.suggestedFilename(), path };
 }
 await a.page.getByTestId('record').click();
 await b.page.getByTestId('record-allow').waitFor({ timeout: 5000 });
@@ -202,6 +203,26 @@ assert.match(audioFile.name, /\.webm$/);
 await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
 await setPrefs(a, ['pref-record-video']);
 console.log('ok: preferences: split layout stacks on phones and sits side by side on desktop; audio-only WebM recording downloads');
+
+await setPrefs(a, ['pref-record-reel', 'pref-format-auto'], 'a-preferences-reel');
+await a.page.getByTestId('record').click();
+await b.page.getByTestId('record-allow').click({ timeout: 5000 });
+await indicator(a).waitFor({ timeout: 5000 });
+await a.page.waitForTimeout(2000);
+const reelFile = await expectDownload(() => a.page.getByTestId('record').click());
+assert.match(reelFile.name, /\.(mp4|webm)$/);
+assert.ok(reelFile.size > 10000, `reel file is ${reelFile.size} bytes`);
+const [rw, rh] = await a.page.evaluate(async (bytes) => { // the browser reads the frame size from the file itself
+  const v = document.createElement('video');
+  v.src = URL.createObjectURL(new Blob([new Uint8Array(bytes)]));
+  await new Promise((ok, fail) => { v.onloadedmetadata = ok; v.onerror = fail; });
+  return [v.videoWidth, v.videoHeight];
+}, [...await readFile(reelFile.path)]);
+assert.deepEqual([rw, rh], [720, 1280], `reel is ${rw}x${rh}`);
+if (recShots) await copyFile(reelFile.path, `${recShots}/reel.${reelFile.name.split('.').pop()}`);
+await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
+await setPrefs(a, ['pref-record-video']);
+console.log(`ok: reel recording is 720x1280 (${reelFile.name.split('.').pop()})`);
 
 await a.page.getByTestId('skip').click();
 await waitStatus(b, 'Looking', 5000);
