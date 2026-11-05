@@ -4,6 +4,7 @@
 
 - New Settings page at `/settings` (sidebar, user menu and phone tabs; no account needed) with the same call preferences as the in-call dialog: screen layout and recording output, quality and format.
 - The form is shared (`src/PreferencesForm.jsx`) by the page and the dialog, so both stay in sync through `src/prefs.js`.
+- Preferences are icon option cards with a short description each; the in-call dialog uses the same cards.
 - `e2e/two-users.mjs`: checks the page saves a choice, keeps it after a reload, and takes phone and desktop screenshots when `REC_SHOT_DIR` is set.
 
 ## Unreleased — call preferences (#51)

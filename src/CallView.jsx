@@ -126,7 +126,7 @@ function RecordConsentDialog({ call, name }) {
 /** Screen layout and recording type, quality and format; saved on this device. */
 function PreferencesDialog({ open, onClose }) {
   return (
-    <Dialog open={open} onClose={onClose} aria-labelledby="preferences-title" data-testid="preferences">
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth aria-labelledby="preferences-title" data-testid="preferences">
       <DialogTitle id="preferences-title">Preferences</DialogTitle>
       <DialogContent>
         <PreferencesForm />
