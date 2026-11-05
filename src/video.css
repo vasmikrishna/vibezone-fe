@@ -540,10 +540,6 @@
   50% { opacity: 0.25; }
 }
 
-.record-consent-text {
-  margin: 0;
-}
-
 /* Chat: a side panel on desktop. */
 .chat-panel {
   display: flex;

@@ -23,8 +23,8 @@ import AdminRooms from './admin/Rooms';
 import { isIOS } from './Layout';
 import { Capacitor } from '@capacitor/core';
 
-// Bump to show the gate again. 3: call recording with consent. Signed-in adults skip it: login already asks for 18+ and the Terms.
-const CONSENT_VERSION = 3;
+// Bump to show the gate again. 3: call recording with consent. 4: recording no longer asks. Signed-in adults skip it: login already asks for 18+ and the Terms.
+const CONSENT_VERSION = 4;
 
 function Chat() {
   const { me } = useApp();

@@ -81,45 +81,22 @@ const clock = (ms) => {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 };
 
-/** The red badge both people see for as long as a recording runs. */
+/** The red badge: my recording, else the partner's (shown only to signed-in users). */
 function RecIndicator({ call, name }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  const time = clock(now - call.recordingStartedAt);
+  const mine = call.recording === 'recording';
+  const since = mine ? call.recordingStartedAt : call.partnerRecordingSince;
+  const time = clock(now - since);
   return (
     <div className="rec-indicator" data-testid="rec-indicator">
       <span className="rec-dot" aria-hidden="true" />
-      <span aria-hidden="true">{call.recordingBy === 'me' ? `REC ${time}` : `${name} is recording · ${time}`}</span>
+      <span aria-hidden="true">{mine ? `REC ${time}` : `${name} is recording · ${time}`}</span>
       <span className="visually-hidden">Recording</span>
     </div>
-  );
-}
-
-/** Asks for consent when the partner wants to record; recording starts only after Allow. */
-function RecordConsentDialog({ call, name }) {
-  return (
-    <Dialog
-      open={call.recording === 'asked'}
-      onClose={call.declineRecording}
-      aria-labelledby="record-consent-title"
-      aria-describedby="record-consent-text"
-      data-testid="record-consent"
-    >
-      <DialogTitle id="record-consent-title">Allow recording?</DialogTitle>
-      <DialogContent>
-        <p id="record-consent-text" className="record-consent-text">
-          {name} wants to record this call. The recording includes your video and voice and is saved
-          only on their device.
-        </p>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={call.declineRecording} data-testid="record-decline">Decline</Button>
-        <Button variant="contained" color="error" onClick={call.allowRecording} data-testid="record-allow">Allow</Button>
-      </DialogActions>
-    </Dialog>
   );
 }
 
@@ -177,8 +154,9 @@ export function CallVideos({ call, center, corner, extra }) {
   const { video, audio, hold } = call.partnerMedia;
   const away = hold ? 'hold' : video ? '' : 'camera';
   const announcement = useAwayAnnouncement(inCall, away, name);
-  const recording = inCall && call.recording === 'recording';
-  const recordText = !recording ? '' : call.recordingBy === 'me' ? 'Recording' : `${name} is recording`;
+  const mine = call.recording === 'recording';
+  const recording = inCall && (mine || Boolean(call.partnerRecordingSince));
+  const recordText = !recording ? '' : mine ? 'Recording' : `${name} is recording`;
   const [prefs] = usePrefs();
   return (
     <div className={`stage${inCall ? ' in-call' : ''}${prefs.layout === 'split' ? ' split' : ''}`} role="region" aria-label="Video call">
@@ -200,7 +178,6 @@ export function CallVideos({ call, center, corner, extra }) {
       <span className="visually-hidden" aria-live="polite">{announcement}</span>
       <span className="visually-hidden" aria-live="assertive">{recordText}</span>
       {recording && <RecIndicator call={call} name={name} />}
-      <RecordConsentDialog call={call} name={name} />
       {inCall ? (
         <div className="stage-pill" data-testid="partner-pill">
           <span
@@ -332,20 +309,19 @@ export function CallControls({ call, idle, onHangUp, onReport, onBlock, hangUpTe
   );
 }
 
-/** Record → Waiting… (partner deciding) → Stop recording; either person can stop. */
+/** Record starts at once on this device → Stop recording; only the recorder can stop their own recording. */
 function RecordButton({ call }) {
   const { recording } = call;
   const label = !call.recordingSupported ? "Recording isn't supported in this browser"
-    : recording === 'requesting' ? 'Waiting…'
-      : recording === 'recording' ? 'Stop recording' : 'Record';
+    : recording === 'recording' ? 'Stop recording' : 'Record';
   return (
     <Tip title={label}>
       <Button
         className={recording === 'recording' ? 'record-button on' : 'record-button'}
         variant="contained"
         disableElevation
-        disabled={!call.recordingSupported || recording === 'requesting' || recording === 'asked'}
-        onClick={recording === 'recording' ? call.stopRecording : call.requestRecording}
+        disabled={!call.recordingSupported}
+        onClick={recording === 'recording' ? call.stopRecording : call.startRecording}
         aria-label={call.recordingSupported ? label : 'Record'}
         data-testid="record"
       >

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — recording notices (#61)
+
+- Record starts at once; no consent dialog, no waiting for the partner.
+- A signed-in partner sees "… is recording this call", a REC badge with the elapsed time, and "… stopped recording"; guests are not notified.
+- Consent screen version 4: the recording point now reads "Calls can be recorded", so the screen shows again for guests.
+
 ## Unreleased — preferences Save button (#58)
 
 - Preferences on the Settings page and in the in-call dialog now apply only when you press Save; the Settings page confirms with a "Preferences saved" message.
