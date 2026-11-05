@@ -107,7 +107,7 @@ await setHidden(a, false);
 await b.page.getByTestId('remote-on-hold').waitFor({ state: 'detached', timeout: 5000 });
 console.log('ok: partner sees camera off, mic off and on hold, and each clears again');
 
-const recShots = process.env.REC_SHOT_DIR; // optional: consent dialog, REC badge on desktop, partner view on a phone
+const recShots = process.env.REC_SHOT_DIR; // optional: REC badge on desktop, preferences, layouts
 const recShot = async (u, name) => {
   if (!recShots) return;
   await u.page.waitForTimeout(800); // let the layout settle after a viewport change
@@ -123,36 +123,22 @@ async function expectDownload(trigger, minSize = 10000) {
   return { size, name: download.suggestedFilename(), path };
 }
 await a.page.getByTestId('record').click();
-await b.page.getByTestId('record-allow').waitFor({ timeout: 5000 });
-await b.page.getByText('Alice wants to record this call').waitFor();
-assert.equal(await a.page.getByTestId('record').isDisabled(), true); // Waiting…
-await b.page.getByTestId('record-decline').click();
-await a.page.getByText('Guest declined recording').waitFor({ timeout: 5000 });
-assert.equal(await indicator(a).count(), 0);
-assert.equal(await indicator(b).count(), 0);
-await a.page.getByTestId('record').click();
-await b.page.getByTestId('record-allow').waitFor({ timeout: 5000 });
-await b.page.setViewportSize({ width: 1280, height: 800 });
-await recShot(b, 'b-consent-dialog');
-await b.page.getByTestId('record-allow').click();
 await indicator(a).waitFor({ timeout: 5000 });
-await indicator(b).getByText('Alice is recording').waitFor({ timeout: 5000 });
+await a.page.waitForTimeout(1000);
+assert.equal(await indicator(b).count(), 0); // a guest partner is told nothing
+assert.equal(await b.page.getByText('Alice is recording').count(), 0);
 await a.page.waitForTimeout(3000);
 assert.match(await indicator(a).textContent(), /REC 00:0[2-9]/);
 await a.page.setViewportSize({ width: 1280, height: 800 });
 await recShot(a, 'a-recording-desktop');
-await b.page.setViewportSize({ width: 390, height: 844 });
-await recShot(b, 'b-phone-partner-recording');
 await a.page.setViewportSize({ width: 375, height: 812 });
 await b.page.setViewportSize({ width: 375, height: 812 });
 const { size } = await expectDownload(() => a.page.getByTestId('record').click());
 await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
-await indicator(b).waitFor({ state: 'detached', timeout: 5000 });
-console.log(`ok: recording needs consent (decline, then allow), both see REC, stop downloads ${size} bytes`);
+console.log(`ok: Record starts at once, the guest partner is told nothing, stop downloads ${size} bytes`);
 
 await a.page.getByTestId('record').click();
-await b.page.getByTestId('record-allow').click({ timeout: 5000 });
-await indicator(b).waitFor({ timeout: 5000 });
+await indicator(a).waitFor({ timeout: 5000 }); // b is a guest, so only a sees the badge
 await b.page.waitForTimeout(2000);
 await expectDownload(() => b.page.getByTestId('skip').click());
 await indicator(a).waitFor({ state: 'detached', timeout: 5000 });
@@ -196,7 +182,6 @@ assert.ok(local.x >= remote.x && local.y >= remote.y && local.x + local.width <=
 
 await setPrefs(a, ['pref-record-audio', 'pref-format-webm']);
 await a.page.getByTestId('record').click();
-await b.page.getByTestId('record-allow').click({ timeout: 5000 });
 await indicator(a).waitFor({ timeout: 5000 });
 await a.page.waitForTimeout(2000);
 const audioFile = await expectDownload(() => a.page.getByTestId('record').click(), 5000);
@@ -207,7 +192,6 @@ console.log('ok: preferences: split layout stacks on phones and sits side by sid
 
 await setPrefs(a, ['pref-record-reel', 'pref-format-auto'], 'a-preferences-reel');
 await a.page.getByTestId('record').click();
-await b.page.getByTestId('record-allow').click({ timeout: 5000 });
 await indicator(a).waitFor({ timeout: 5000 });
 await a.page.waitForTimeout(2000);
 const reelFile = await expectDownload(() => a.page.getByTestId('record').click());

@@ -3,7 +3,7 @@
 // The frontend must be served with VITE_SERVER_URL=ws://localhost:<API_PORT>, e.g.
 //   VITE_SERVER_URL=ws://localhost:3101 npx vite --port 5273
 // Env: API_PORT (3101), MONGO_URI (mongodb://localhost:27017/vibezone-e2e), BACKEND_DIR (../vibezone-be),
-//      CHROMIUM_PATH, SCREENSHOT_DIR (optional, saves 3 screenshots). Takes about 4 minutes: the room starts 2 minutes out.
+//      CHROMIUM_PATH, SCREENSHOT_DIR (optional, saves 4 screenshots). Takes about 4 minutes: the room starts 2 minutes out.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -181,6 +181,17 @@ try {
   assert.deepEqual(await guest.getByTestId('chat-message').allTextContents(), ['Hana: welcome', 'You: thanks']);
   if (shots) await guest.screenshot({ path: `${shots}/room-call.png`, fullPage: true });
   console.log('ok: chat works both ways in a room');
+
+  await host.getByTestId('record').click();
+  await guest.getByTestId('rec-indicator').filter({ hasText: 'Hana is recording' }).waitFor({ timeout: 5000 });
+  await guest.getByTestId('notice').filter({ hasText: 'Hana is recording this call' }).waitFor();
+  await host.getByTestId('rec-indicator').filter({ hasText: 'REC' }).waitFor();
+  await guest.waitForTimeout(1500);
+  if (shots) await guest.screenshot({ path: `${shots}/room-partner-recording.png` });
+  const [dl] = await Promise.all([host.waitForEvent('download', { timeout: 10000 }), host.getByTestId('record').click()]);
+  assert.match(dl.suggestedFilename(), /^vibezone-call-.*\.(webm|mp4)$/);
+  await guest.getByTestId('rec-indicator').waitFor({ state: 'detached', timeout: 5000 });
+  console.log('ok: a signed-in partner is told when the host records, and when it stops');
 
   await waitStatus(host, 'Nobody is waiting yet.', 75000);
   await waitStatus(guest, 'Waiting for the host.', 5000);

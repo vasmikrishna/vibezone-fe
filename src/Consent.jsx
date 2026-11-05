@@ -32,7 +32,7 @@ export default function Consent({ onAccept }) {
         </li>
         <li>
           <span className="pref-icon"><FiberManualRecordOutlined /></span>
-          <span><strong>Recording asks first</strong><small>A call is only recorded when both of you agree, and the file stays on the recorder’s device.</small></span>
+          <span><strong>Calls can be recorded</strong><small>Either person can record a call. Signed-in users are told when the other person records here; the file stays on that person’s device.</small></span>
         </li>
       </ul>
       <div className="consent-checks">
