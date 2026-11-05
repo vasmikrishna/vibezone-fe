@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — consent screen (#56)
+
+- Signed-in adults skip the 18+ and terms screen before video chat; login already asks for both.
+- Redesigned consent card: icon header, three short points (random match, staying safe, recording asks first) and a full-width Continue button.
+
 ## Unreleased — Instagram Reel recording (#55)
 
 - New recording output "Instagram Reel": a vertical 9:16 video (540×960, 720×1280 or 1080×1920 by quality) with the partner on top and you below.

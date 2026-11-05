@@ -112,6 +112,11 @@ try {
   await guest.getByTestId('profile-saved').waitFor();
   console.log('ok: two users log in with +91 phone and OTP, and set adult profiles');
 
+  await host.goto(`${base}/chat`);
+  await host.getByTestId('start-stop').waitFor();
+  assert.equal(await host.getByTestId('consent-continue').count(), 0, 'signed-in adults skip the consent card');
+  console.log('ok: a signed-in adult opens video chat without the consent card');
+
   // Start 2 to 3 minutes from now, on a whole minute (datetime-local has minute precision).
   const startsAt = new Date(Math.ceil((Date.now() + 2 * 60000) / 60000) * 60000);
   const local = new Date(startsAt.getTime() - startsAt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);

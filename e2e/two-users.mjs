@@ -263,6 +263,7 @@ await site.goto(home);
 await site.getByTestId('hero-start').click();
 await site.waitForURL('**/chat');
 await site.getByTestId('consent-continue').waitFor();
+if (process.env.REC_SHOT_DIR) await site.screenshot({ path: `${process.env.REC_SHOT_DIR}/consent-phone.png` });
 for (const p of ['about', 'contact']) {
   await site.goto(new URL(`/${p}`, home).href);
   assert.ok(await site.evaluate(() => document.documentElement.scrollWidth <= 375), `${p}: no horizontal scroll`);
