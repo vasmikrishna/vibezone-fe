@@ -256,7 +256,7 @@ for (const p of ['about', 'contact']) {
 await site.close();
 console.log('ok: home, about, contact render; Start chatting opens /chat');
 
-const settingsCtx = await browser.newContext({ viewport: { width: 375, height: 812 } });
+const settingsCtx = await browser.newContext({ permissions: ['camera', 'microphone'], viewport: { width: 375, height: 812 } });
 const sp = await settingsCtx.newPage();
 const settingsUrl = new URL('/settings', home).href;
 await sp.goto(settingsUrl);
@@ -277,8 +277,18 @@ await sp.reload(); // the phone drawer layout does not re-flow on a resize alone
 await sp.getByTestId('settings-page').waitFor();
 assert.ok(await sp.getByTestId('pref-layout-split').isChecked(), 'settings: split layout kept on desktop too');
 if (recShots) await sp.screenshot({ path: `${recShots}/settings-desktop.png` });
+// Split applies only during a call: before one, the Connect panel spans the whole stage.
+await sp.goto(new URL('/chat', home).href);
+for (const id of ['consent-age', 'consent-terms']) await sp.getByTestId(id).locator('input').check();
+await sp.getByTestId('consent-continue').click();
+const stage = await sp.locator('.stage').boundingBox();
+const connect = await sp.getByTestId('start-stop').boundingBox();
+assert.ok(Math.abs(connect.x + connect.width / 2 - (stage.x + stage.width / 2)) < 20, 'Connect is centred on the whole stage before a call');
+if (recShots) await sp.screenshot({ path: `${recShots}/split-precall-desktop.png` });
+await sp.goto(settingsUrl);
 await sp.getByTestId('pref-layout-focus').check();
 await sp.getByTestId('settings-save').click();
+await sp.getByTestId('settings-saved').waitFor();
 await settingsCtx.close();
 console.log('ok: settings page keeps a choice only after Save, also after a reload');
 
