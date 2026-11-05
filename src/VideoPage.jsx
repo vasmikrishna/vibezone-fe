@@ -9,7 +9,7 @@ import TagInput from './components/Tags/taginput';
 import { useCall } from './useCall';
 import { getToken } from './api';
 import { AppPage, useApp } from './AppLayout';
-import { MediaError, CallVideos, CallControls, StageState, ChatPanel, ReportDialog, Notice } from './CallView';
+import { MediaError, CallVideos, CallControls, StageState, ChatPanel, ReportDialog, Notice, LastPartnerFriend } from './CallView';
 import './video.css';
 
 const MAX_NAME_LENGTH = 30;
@@ -99,6 +99,7 @@ export default function VideoPage() {
       <Button className="start-button" variant="contained" disableElevation size="large" onClick={connect} data-testid="start-stop">
         Connect
       </Button>
+      <LastPartnerFriend call={call} />
     </StageState>
   ) : status === 'reconnecting' ? (
     <StageState pulse title="Connection lost" sub={`Reconnecting in ${call.retrySeconds}s…`} />
@@ -109,6 +110,7 @@ export default function VideoPage() {
       sub={online}
     >
       <Button className="stage-stop" variant="outlined" onClick={call.stop} data-testid="search-stop">Stop</Button>
+      <LastPartnerFriend call={call} />
     </StageState>
   );
   const tune = (

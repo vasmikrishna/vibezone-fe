@@ -332,6 +332,32 @@ function RecordButton({ call }) {
   );
 }
 
+const LAST_FRIEND_TEXT = {
+  none: (name) => `Add ${name} as a friend`,
+  requested: (name) => `Request sent to ${name}`,
+  incoming: (name) => `Accept ${name}'s request`,
+  friends: (name) => `You and ${name} are friends`,
+};
+
+/** After a call with a signed-in partner: add them as a friend (the server allows 10 minutes). */
+export function LastPartnerFriend({ call }) {
+  if (!call.lastPartner) return null;
+  const { name, friendStatus } = call.lastPartner;
+  const done = friendStatus === 'requested' || friendStatus === 'friends';
+  return (
+    <Button
+      className="stage-stop last-friend"
+      variant="outlined"
+      disabled={done}
+      onClick={call.addFriend}
+      startIcon={done ? <HowToRegOutlined aria-hidden="true" /> : <PersonAddAlt aria-hidden="true" />}
+      data-testid="add-last-friend"
+    >
+      {(LAST_FRIEND_TEXT[friendStatus] || LAST_FRIEND_TEXT.none)(name)}
+    </Button>
+  );
+}
+
 const FRIEND_BUTTONS = {
   none: ['Add friend', false],
   requested: ['Request sent', true],

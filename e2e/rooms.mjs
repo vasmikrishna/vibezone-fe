@@ -3,7 +3,7 @@
 // The frontend must be served with VITE_SERVER_URL=ws://localhost:<API_PORT>, e.g.
 //   VITE_SERVER_URL=ws://localhost:3101 npx vite --port 5273
 // Env: API_PORT (3101), MONGO_URI (mongodb://localhost:27017/vibezone-e2e), BACKEND_DIR (../vibezone-be),
-//      CHROMIUM_PATH, SCREENSHOT_DIR (optional, saves 4 screenshots). Takes about 4 minutes: the room starts 2 minutes out.
+//      CHROMIUM_PATH, SCREENSHOT_DIR (optional, saves 5 screenshots). Takes about 4 minutes: the room starts 2 minutes out.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -197,6 +197,15 @@ try {
   await waitStatus(guest, 'Waiting for the host.', 5000);
   assert.deepEqual(await guest.getByTestId('chat-message').allTextContents(), []);
   console.log('ok: the session ends by itself when the time per person is up');
+  await guest.getByTestId('add-last-friend').filter({ hasText: 'Add Hana as a friend' }).waitFor();
+  if (shots) await guest.screenshot({ path: `${shots}/room-add-last-friend.png` });
+  await guest.getByTestId('add-last-friend').click();
+  await guest.getByTestId('add-last-friend').filter({ hasText: 'Request sent to Hana' }).waitFor({ timeout: 5000 });
+  await host.getByTestId('notice').filter({ hasText: 'Gopi sent you a friend request' }).waitFor({ timeout: 5000 });
+  await host.getByTestId('add-last-friend').filter({ hasText: "Accept Gopi's request" }).click();
+  await host.getByTestId('add-last-friend').filter({ hasText: 'You and Gopi are friends' }).waitFor({ timeout: 5000 });
+  await guest.getByTestId('add-last-friend').filter({ hasText: 'You and Hana are friends' }).waitFor({ timeout: 5000 });
+  console.log('ok: after the call, both can add each other as friends from the post-call panel');
 
   await host.getByTestId('room-end').click();
   await host.getByTestId('end-confirm').click();
