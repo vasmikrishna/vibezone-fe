@@ -6,6 +6,9 @@ import { useApp } from './AppLayout';
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 const MAX_RETRY_MS = 30000;
 const REPLACED_CLOSE_CODE = 4000;
+const CONNECT_TIMEOUT_MS = 20000; // a new call whose media never comes up is given up
+const RECOVER_TIMEOUT_MS = 30000; // a call whose media dropped and did not come back
+const ICE_RESTART_MS = 5000; // the caller re-offers this often while the media is down
 const MEDIA_ON = { video: true, audio: true, hold: false };
 const liveTrack = (t) => Boolean(t) && t.readyState === 'live' && !t.muted;
 const FRIEND_STATUSES = ['none', 'requested', 'incoming', 'friends'];
@@ -44,6 +47,9 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
   const partnerLeftTimerRef = useRef(null);
   const iceServersRef = useRef([]);
   const pendingCandidatesRef = useRef([]);
+  const roleRef = useRef(null); // caller | callee for the current call
+  const watchdogRef = useRef(null); // gives the call up if the media does not come (back) up
+  const restartTimerRef = useRef(null); // the caller's repeated ICE restarts
   const stoppedRef = useRef(true);
   const retryTimerRef = useRef(null);
   const retryDelayRef = useRef(1000);
@@ -60,6 +66,13 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
 
   // idle | connecting | searching | connected | reconnecting | banned
   const [status, setStatus] = useState('idle');
+  // The media path while status is 'connected': connecting (never up yet) | up | reconnecting
+  const [link, setLink] = useState('connecting');
+  const linkRef = useRef('connecting');
+  const setLinkState = (value) => {
+    linkRef.current = value;
+    setLink(value);
+  };
   const [localStream, setLocalStream] = useState(null);
   const [mediaError, setMediaError] = useState(null);
   const [micOn, setMicOn] = useState(true);
@@ -234,6 +247,11 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
     finishRecording(); // the call ended: keep what was recorded
     setRecording('idle');
     setPartnerRecordingSince(null);
+    clearTimeout(watchdogRef.current);
+    clearInterval(restartTimerRef.current);
+    restartTimerRef.current = null;
+    roleRef.current = null;
+    setLinkState('connecting');
     pcRef.current?.close();
     pcRef.current = null;
     pendingCandidatesRef.current = [];
@@ -271,7 +289,8 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
   const leaveCall = (message) => {
     if (message) send(message);
     closePeer();
-    setStatus('searching');
+    // With the socket down the next 'ready' moves us on to searching.
+    setStatus(wsRef.current?.readyState === WebSocket.OPEN ? 'searching' : 'reconnecting');
   };
 
   const fail = (pc) => {
@@ -321,11 +340,37 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
     };
     pc.onconnectionstatechange = () => {
       if (pcRef.current !== pc) return;
-      // 'disconnected' often recovers by itself; a peer that really left arrives as partnerLeft.
-      if (pc.connectionState === 'failed') fail(pc);
+      const state = pc.connectionState;
+      if (state === 'connected') {
+        clearTimeout(watchdogRef.current);
+        clearInterval(restartTimerRef.current);
+        restartTimerRef.current = null;
+        setLinkState('up');
+      } else if (state === 'disconnected' || state === 'failed') {
+        if (linkRef.current === 'up') mediaLost(pc);
+        else if (linkRef.current === 'connecting' && state === 'failed') fail(pc); // never came up
+      }
     };
     limitBitrate(pc);
+    watchdogRef.current = setTimeout(() => fail(pc), CONNECT_TIMEOUT_MS);
     return pc;
+  };
+
+  /** Only the caller re-offers (no glare); the callee answers through handleOffer. */
+  const restartIce = (pc) => {
+    if (pcRef.current !== pc || roleRef.current !== 'caller') return;
+    pc.restartIce();
+    makeOffer(pc);
+  };
+
+  // A partner who really left arrives as partnerLeft; this is a network drop, so try to bring the media back.
+  const mediaLost = (pc) => {
+    setLinkState('reconnecting');
+    clearTimeout(watchdogRef.current);
+    watchdogRef.current = setTimeout(() => fail(pc), RECOVER_TIMEOUT_MS);
+    restartIce(pc);
+    // Offers are lost while the partner's socket is down, so keep offering until the media is back.
+    if (roleRef.current === 'caller') restartTimerRef.current = setInterval(() => restartIce(pc), ICE_RESTART_MS);
   };
 
   const makeOffer = async (pc) => {
@@ -352,7 +397,8 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
 
   const handleAnswer = async (answer) => {
     const pc = pcRef.current;
-    if (!pc) return;
+    // Ignore a late answer to an offer we already replaced or that was already answered.
+    if (!pc || pc.signalingState !== 'have-local-offer') return;
     try {
       await pc.setRemoteDescription(answer);
       await flushCandidates(pc);
@@ -378,11 +424,27 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
   const handleMessage = (data) => {
     if (optionsRef.current.onMessage?.(data)) return;
     switch (data.type) {
-      case 'ready':
+      case 'ready': {
         iceServersRef.current = Array.isArray(data.iceServers) ? data.iceServers : [];
         retryDelayRef.current = 1000;
+        const pc = pcRef.current;
+        if (pc && data.resumed) { // our socket came back within the server's grace period: same call
+          try {
+            pc.setConfiguration({ ...pc.getConfiguration(), iceServers: iceServersRef.current }); // fresh TURN creds
+          } catch {
+            // Keep the old servers; a restart may still work over them.
+          }
+          send({ type: 'mediaState', ...mediaRef.current });
+          send({ type: 'networkQualityUpdate', quality: qualityRef.current });
+          if (pc.connectionState !== 'connected') restartIce(pc);
+          break;
+        }
+        if (pc) closePeer(); // the server ended the call while we were away
+        // We gave the call up while offline but the server kept it: end it now.
+        else if (data.resumed && optionsRef.current.failMessage) send(optionsRef.current.failMessage);
         setStatus('searching');
         break;
+      }
       case 'banned':
         stoppedRef.current = true;
         setBannedUntil(data.until);
@@ -397,7 +459,9 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
         clearTimeout(partnerLeftTimerRef.current);
         setPartnerLeft(false);
         setLastPartner(null);
+        if (Array.isArray(data.iceServers)) iceServersRef.current = data.iceServers; // fresh TURN creds
         const pc = createPeer();
+        roleRef.current = data.role === 'caller' ? 'caller' : 'callee';
         setSharedTags(Array.isArray(data.sharedTags) ? data.sharedTags : []);
         setPartnerName(typeof data.partnerName === 'string' ? data.partnerName : 'Guest');
         setCanAddFriend(data.canAddFriend === true);
@@ -494,8 +558,10 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
       return;
     }
     wsRef.current = ws;
-    setStatus('connecting');
+    if (!pcRef.current) setStatus('connecting'); // a live call stays on screen while the socket comes back
+    let opened = false;
     ws.onopen = () => {
+      opened = true;
       ws.send(JSON.stringify(joinRef.current));
     };
     ws.onmessage = (event) => {
@@ -510,17 +576,20 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
     ws.onclose = ({ code }) => {
       if (wsRef.current !== ws) return;
       wsRef.current = null;
-      closePeer();
+      // Keep a live call: the media flows peer to peer and the server holds the call for a rejoin.
+      const live = Boolean(pcRef.current) && code !== REPLACED_CLOSE_CODE && !stoppedRef.current;
+      if (!live) closePeer();
       if (code === REPLACED_CLOSE_CODE) {
         stopRef.current();
         setNotice('Vibezone was opened in another tab or window.');
         return;
       }
       if (stoppedRef.current) return;
-      const delay = retryDelayRef.current;
-      retryDelayRef.current = Math.min(delay * 2, MAX_RETRY_MS);
+      let delay = retryDelayRef.current;
+      if (live && opened) delay = 500; // rejoin fast, within the server's grace period
+      else retryDelayRef.current = Math.min(delay * 2, MAX_RETRY_MS);
       setRetrySeconds(delay / 1000);
-      setStatus('reconnecting');
+      if (!live) setStatus('reconnecting');
       retryTimerRef.current = setTimeout(connect, delay);
     };
   };
@@ -633,7 +702,7 @@ export function useCall({ onMessage, failMessage = { type: 'skip' }, preview: au
   };
 
   return {
-    status, mediaError, micOn, setMicOn, videoOn, setVideoOn, cameraCount, sharedTags, activeUsers,
+    status, link, mediaError, micOn, setMicOn, videoOn, setVideoOn, cameraCount, sharedTags, activeUsers,
     partnerName, messages, chatText, setChatText, partnerQuality, retrySeconds, bannedUntil, notice, setNotice,
     streak, setStreak, friendStatus, canAddFriend, lastPartner, localStream, partnerLeft,
     recording: record.state, recordingStartedAt: record.startedAt, partnerRecordingSince, recordingSupported,

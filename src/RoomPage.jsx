@@ -135,7 +135,7 @@ export default function RoomPage() {
         idle: 'Press Join room to turn on your camera and enter.',
         connecting: 'Connecting…',
         searching: waitingText,
-        connected: `In a call with ${call.partnerName}${timeLeft}`,
+        connected: { connecting: 'Connecting…', up: `In a call with ${call.partnerName}${timeLeft}`, reconnecting: 'Reconnecting…' }[call.link],
         reconnecting: `Connection lost. Reconnecting in ${call.retrySeconds}s…`,
         banned: 'You cannot join right now.',
       }[status];

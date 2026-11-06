@@ -80,7 +80,7 @@ export default function VideoPage() {
     idle: 'Press Connect to meet someone.',
     connecting: 'Connecting…',
     searching: 'Looking for someone…',
-    connected: 'Connected',
+    connected: { connecting: 'Connecting…', up: 'Connected', reconnecting: 'Reconnecting…' }[call.link],
     reconnecting: `Connection lost. Reconnecting in ${call.retrySeconds}s…`,
     banned: bannedText,
   }[status];

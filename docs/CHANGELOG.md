@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — call reliability on bad networks (#68)
+
+- Calls recover from a media drop: on `disconnected`/`failed` the caller restarts ICE at once and every 5s; the call is given up only if it is not back within 30s. A late answer to a replaced offer is ignored.
+- A call whose media never comes up is given up after 20s (it could sit on a black screen forever).
+- Status is honest: "Connecting…" until video flows, then "Connected", and "Reconnecting…" while restarting, with an overlay on the remote video (`link-state`). Rooms show the same.
+- A dropped signalling socket no longer ends a working call: the call stays on screen, the socket rejoins after 500ms, and the server's `ready { resumed: true }` keeps the call (backend #22).
+- TURN credentials come from each `matched` (fresh per call) instead of only from `ready`.
+
 ## Unreleased — referral program (#81)
 
 - Opening any page with `?ref=<code>` remembers the invite code on the device (`src/invite.js`). The Log in page then says "<name> invited you to Vibezone. Sign in and you'll be friends straight away." and sends the code with the Google sign-in; a new account becomes friends with the inviter. Unknown codes are forgotten.

@@ -157,19 +157,26 @@ export function CallVideos({ call, center, corner, extra }) {
   const mine = call.recording === 'recording';
   const recording = inCall && (mine || Boolean(call.partnerRecordingSince));
   const recordText = !recording ? '' : mine ? 'Recording' : `${name} is recording`;
+  const linkText = inCall && { connecting: 'Connecting…', reconnecting: 'Reconnecting…' }[call.link];
   const [prefs] = usePrefs();
   return (
     <div className={`stage${inCall ? ' in-call' : ''}${inCall && prefs.layout === 'split' ? ' split' : ''}`} role="region" aria-label="Video call">
       <video ref={call.remoteVideo} autoPlay playsInline className="video" data-testid="remote-video" />
       {!inCall && center}
-      {inCall && away === 'hold' && (
+      {linkText && (
+        <div className="media-overlay" data-testid="link-state">
+          <span className="stage-pulse" aria-hidden="true"><span /></span>
+          <p className="media-title">{linkText}</p>
+        </div>
+      )}
+      {inCall && !linkText && away === 'hold' && (
         <div className="media-overlay" data-testid="remote-on-hold">
           <span className="media-avatar" aria-hidden="true"><PauseIcon fontSize="large" /></span>
           <p className="media-title">{name} is on hold</p>
           <p className="media-sub">They may be on another call or switched apps. Waiting for them to come back…</p>
         </div>
       )}
-      {inCall && away === 'camera' && (
+      {inCall && !linkText && away === 'camera' && (
         <div className="media-overlay" data-testid="remote-camera-off">
           <span className="media-avatar" aria-hidden="true">{name.charAt(0).toUpperCase()}</span>
           <p className="media-title">{name} turned their camera off</p>
