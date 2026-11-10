@@ -54,8 +54,9 @@
 .app-user-text span { font-size: .75rem; color: #a9a9c8; }
 .app-avatar {
   flex: none; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;
-  font: inherit; font-size: .9375rem; font-weight: 600; color: #fff; background: #8f47ff; border: 0; border-radius: 50%;
+  font: inherit; font-size: .9375rem; font-weight: 600; color: #fff; background: #8f47ff; border: 0; border-radius: 50%; overflow: hidden;
 }
+.app-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .app-sidebar-inner :focus-visible { outline: 2px solid #c4a0ff; outline-offset: 2px; }
 
 /* Collapsed icon rail. */
@@ -154,6 +155,9 @@
 /* Pages moved in from the marketing site. */
 .app .form-page { max-width: 560px; margin: 0; }
 .profile-page { width: 100%; }
+.profile-photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.app .profile-photo { width: 96px; height: 96px; font-size: 2.5rem; }
+.profile-photo-row .MuiButton-root { min-height: 44px; }
 .rooms-page { display: flex; flex-direction: column; gap: 16px; }
 .rooms-page .room-list { margin: 0; }
 .app .room-card { border-color: var(--line); border-radius: 16px; padding: 20px; }

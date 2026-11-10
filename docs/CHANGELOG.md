@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — profile photo and bio (#71)
+
+- Profile page: "Change photo" picks an image, which is centre-cropped and shrunk to a 192px JPEG in the browser; "Remove" clears it. Both apply on Save.
+- A Bio field (up to 160 characters) is saved with the name.
+- The sidebar and top-bar avatars show the photo instead of the letter.
+
 ## Unreleased — Google-only sign-in (#69)
 
 - The login page offers only Continue with Google. The phone number + SMS code form is gone (production never had an SMS provider, so it always failed with 503).

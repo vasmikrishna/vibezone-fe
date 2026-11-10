@@ -1,4 +1,5 @@
 # Completed
+- 2026-11-10: profile photo and bio on the Profile page, photo in the app avatars (#71). See docs/CHANGELOG.md.
 - 2026-11-10: Google-only sign-in; phone/OTP form removed (#69). See docs/CHANGELOG.md.
 - 2026-11-05: Settings page (`/settings`) for the call preferences, no login needed (#53). See docs/CHANGELOG.md.
 - 2026-11-04: call preferences: stage layout (focus or split) and recording type, quality and format (#51). See docs/CHANGELOG.md.

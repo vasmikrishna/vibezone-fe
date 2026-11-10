@@ -14,6 +14,8 @@ const apiPort = process.env.API_PORT || '3101';
 const api = `http://localhost:${apiPort}/api`;
 const backendDir = process.env.BACKEND_DIR || fileURLToPath(new URL('../../vibezone-be', import.meta.url));
 const shots = process.env.SCREENSHOT_DIR;
+const TINY_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+const BIO = 'Movie nights and long walks';
 
 const backend = spawn(process.execPath, ['app.js'], {
   cwd: backendDir,
@@ -93,18 +95,29 @@ try {
     await page.getByTestId('profile-name').waitFor();
     return token;
   }
-  async function setProfile(page, name, dob) {
+  async function setProfile(page, name, dob, withPhotoAndBio = false) {
     await page.getByTestId('profile-name').fill(name);
     await page.getByTestId('profile-dob').fill(dob);
+    if (withPhotoAndBio) {
+      await page.getByTestId('profile-bio').fill(BIO);
+      await page.getByTestId('profile-photo-input').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: Buffer.from(TINY_PNG, 'base64') });
+      await page.getByTestId('profile-photo').waitFor();
+    }
     await page.getByTestId('profile-save').click();
   }
 
   const host = await openUser();
   await login(host);
   await noHorizontalScroll(host, 'profile');
-  await setProfile(host, 'Hana', '1990-05-15');
+  await setProfile(host, 'Hana', '1990-05-15', true);
   await host.getByTestId('profile-saved').waitFor();
   await host.getByTestId('profile-adult').waitFor();
+  await host.reload();
+  await host.getByTestId('profile-name').waitFor();
+  assert.equal(await host.getByTestId('profile-bio').inputValue(), BIO, 'bio survives a reload');
+  assert.ok((await host.getByTestId('profile-photo').getAttribute('src')).startsWith('data:image/jpeg'), 'photo survives a reload');
+  console.log('ok: profile photo and bio survive a reload');
+  if (shots) await host.screenshot({ path: `${shots}/profile.png` });
   const guest = await openUser();
   const guestToken = await login(guest);
   await setProfile(guest, 'Gopi', '1995-01-20');
