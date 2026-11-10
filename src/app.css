@@ -83,7 +83,7 @@
 .app-title { flex: 1; min-width: 0; margin: 0; font-size: 1.0625rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-actions { display: flex; align-items: center; gap: 12px; font-size: .875rem; }
 .app-actions:empty { display: none; }
-.app-topbar-avatar { width: 36px; height: 36px; cursor: pointer; }
+.app-topbar-avatar { width: 40px; height: 40px; cursor: pointer; }
 .app-topbar-avatar:hover { background: #7a35e8; }
 .app-topbar-login.MuiButton-root, .app-action-button.MuiButton-root { min-height: 40px; border-radius: 999px; }
 .app-content { width: 100%; max-width: 1200px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 16px; }

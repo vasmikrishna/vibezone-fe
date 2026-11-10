@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — phone-width audit: error states and tap targets (#75)
+
+- When the server cannot be reached, signed-in pages show "Could not reach the server" with Retry (and retry by themselves when the phone is back online) instead of a blank profile and a "?" avatar.
+- A room link whose room was cancelled or has ended says so with "Back to rooms" instead of offering "Join room".
+- The dashboard and the rooms list get a Retry button on their load errors.
+- Terms and Privacy use the site header and footer and have their own page titles.
+- The first-visit tour on video chat uses the Vibezone purple, has 44px buttons and can be skipped.
+- On touch screens every button is at least 44px tall and text fields are 16px, so iOS no longer zooms the page when a field is focused. The top-bar avatar is 40px.
+
 ## Unreleased — friends messages, presence and unread counts (#73)
 
 - Friends can message each other: tap a friend on `/friends` to open the chat at `/friends/:id`. Messages show day dividers, grouped bubbles, Delivered or Seen ticks, a typing indicator and "Load earlier messages".

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { SiteLayout } from './Layout';
 
 const contactEmail = import.meta.env.VITE_CONTACT_EMAIL;
 
@@ -14,7 +15,8 @@ function BackLink() {
 
 export function Terms() {
   return (
-    <main className="page legal">
+    <SiteLayout title="Terms of Use - Vibezone">
+    <div className="page legal">
       <h1>Terms of Use</h1>
       <p>
         Vibezone offers 1-to-1 live video calls. In random chat you are matched with a random
@@ -87,13 +89,15 @@ export function Terms() {
       </p>
       <Contact />
       <BackLink />
-    </main>
+    </div>
+    </SiteLayout>
   );
 }
 
 export function Privacy() {
   return (
-    <main className="page legal">
+    <SiteLayout title="Privacy Policy - Vibezone">
+    <div className="page legal">
       <h1>Privacy Policy</h1>
       <h2>Your video and audio</h2>
       <p>
@@ -158,6 +162,7 @@ export function Privacy() {
       </p>
       <Contact />
       <BackLink />
-    </main>
+    </div>
+    </SiteLayout>
   );
 }

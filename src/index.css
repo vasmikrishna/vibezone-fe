@@ -54,3 +54,12 @@ h1 {
   font-size: 1.75rem;
   line-height: 1.2;
 }
+
+/* Touch screens: every button is at least a 44px target. */
+@media (pointer: coarse) {
+  .MuiButton-root { min-height: 44px; }
+  /* iOS zooms the whole page when a focused field is under 16px; !important beats the per-field sizes. */
+  input, textarea, select { font-size: 16px !important; }
+}
+/* "Retry" and "Add now" stay on one line beside a wrapping message. */
+.MuiAlert-action .MuiButton-root { white-space: nowrap; }

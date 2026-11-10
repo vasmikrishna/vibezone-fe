@@ -238,6 +238,18 @@ try {
   assert.equal(book.status, 403);
   console.log('ok: an under-18 user is refused and cannot book or create');
 
+  await kid.goto(`${base}/rooms/000000000000000000000000`);
+  await kid.getByTestId('room-missing').waitFor();
+  assert.equal(await kid.getByTestId('room-join-leave').count(), 0, 'a room that is gone cannot be joined');
+  await kid.route('**/api/me', (route) => route.abort());
+  await kid.goto(`${base}/profile`);
+  await kid.getByTestId('admin-error').waitFor(); // not a blank, signed-out page
+  await noHorizontalScroll(kid, 'offline error');
+  await kid.unroute('**/api/me');
+  await kid.getByTestId('admin-retry').click();
+  await kid.getByTestId('profile-name').waitFor();
+  console.log('ok: a missing room and an unreachable server each show a message with a way back');
+
   await kid.goto(`${base}/profile`);
   await kid.getByTestId('profile-delete').click();
   await kid.getByRole('dialog', { name: 'Delete your account?' }).waitFor();

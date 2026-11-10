@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -10,6 +10,7 @@ import { useCall } from './useCall';
 import { MediaError, CallVideos, CallControls, StageState, ChatPanel, ReportDialog, Notice, LastPartnerFriend } from './CallView';
 import { api, getToken, formatDate } from './api';
 import { AppPage } from './AppLayout';
+import { ApiError } from './admin/common';
 import ArrowBack from '@mui/icons-material/ArrowBack';
 import './video.css';
 
@@ -30,7 +31,8 @@ export default function RoomPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = getToken();
-  const [room, setRoom] = useState(null);
+  const [room, setRoom] = useState(undefined); // undefined = loading, null = not in the list
+  const [loadError, setLoadError] = useState(null);
   const [state, setState] = useState(null); // last roomState
   const [sessionEndsAt, setSessionEndsAt] = useState(null);
   const [closed, setClosed] = useState('');
@@ -71,11 +73,16 @@ export default function RoomPage() {
     },
   });
 
+  // ponytail: the list is every joinable room (the API caps it at 100); add GET /rooms/:id if that cap is ever reached.
+  const load = useCallback(() => api('/rooms')
+    .then((list) => {
+      setRoom(list.find((r) => r.id === id) || null);
+      setLoadError(null);
+    })
+    .catch((err) => (err.status === 401 ? navigate('/login', { replace: true }) : setLoadError(err))), [id, navigate]);
   useEffect(() => {
-    api('/rooms')
-      .then((list) => setRoom(list.find((r) => r.id === id) || null))
-      .catch((err) => err.status === 401 && navigate('/login', { replace: true }));
-  }, [id, navigate]);
+    load();
+  }, [load]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -95,6 +102,18 @@ export default function RoomPage() {
   const { status } = call;
   const inCall = status === 'connected';
   const idle = status === 'idle' || status === 'banned';
+  if (idle && !closed && (room === null || loadError)) {
+    return (
+      <AppPage title={title}>
+        {loadError ? <ApiError error={loadError} onRetry={load} /> : (
+          <div className="thread-empty" data-testid="room-missing">
+            <p>This room was cancelled or has ended.</p>
+            <Button component={Link} to="/rooms" variant="outlined" data-testid="room-missing-back">Back to rooms</Button>
+          </div>
+        )}
+      </AppPage>
+    );
+  }
   const isHost = state ? state.role === 'host' : Boolean(room?.isHost);
   const queue = state?.queue || [];
   const started = room ? now >= new Date(room.startsAt).getTime() : true;

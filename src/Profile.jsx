@@ -11,6 +11,7 @@ import DialogActions from '@mui/material/DialogActions';
 import { AppPage, useApp } from './AppLayout';
 import { BadgeIcon } from './BadgesDialog';
 import { api, clearToken } from './api';
+import { Loading } from './admin/common';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -112,6 +113,7 @@ export default function Profile() {
   return (
     <AppPage title="Profile & settings">
       <section className="form-page profile-page">
+        {user === undefined && <Loading label="Loading profile" />}
         {user && (
           <form className="form" onSubmit={save} noValidate>
             <div className="profile-photo-row">

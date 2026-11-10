@@ -8,13 +8,14 @@ The Badges dialog lists all badges with name and description. Earned badges are 
 ## How it works
 - Profile (`src/Profile.jsx`): photo and bio are saved with `PATCH /api/me`. The photo is decoded with `createImageBitmap` (or an `<img>`), drawn centre-cropped onto a 192×192 canvas and sent as a JPEG data URL (`photo`); `photo: null` removes it. The pending photo lives in state until Save. Bio is a 160-character text field.
 - `AppLayout.jsx` renders `me.photo` in the `.app-avatar` spots (`.app-avatar-img`), else the name's initial.
+- `AppLayout.jsx` keeps a failed `GET /api/me` (other than 401) as `meError`; `AppPage` then shows `ApiError` with Retry in place of the page, and `loadMe` runs again on the browser's `online` event. A 401 goes to `/login`.
 - `src/AccountSidebar.jsx` loads `GET /api/me` itself and renders nothing when signed out or on an error (a 401 also clears the token).
 - `SiteLayout` takes `account` to put the sidebar beside `<main>`; `VideoPage` wraps its page in `.video-shell`.
 - `src/BadgesDialog.jsx` exports `BadgeIcon` (icon and colour per badge id: `first-call`, `regular`, `certified`, `hot-streak`, `week-warrior`, `royalty`). Missing `badges` from an older server shows none.
 - Styles live in `src/site.css` (sidebar, dialog) and `src/video.css` (`.video-shell`).
 
 ## Tests
-Manual check at 375px and desktop. Test ids: `account-sidebar`, `sidebar-*`, `badges-dialog`, `badges-close`, `badge-{id}`, `profile-badges`, `profile-photo`, `profile-photo-change`, `profile-photo-remove`, `profile-photo-input`, `profile-bio`. `e2e/rooms.mjs` sets a photo and bio for the host and checks they survive a reload.
+Manual check at 375px and desktop. Test ids: `account-sidebar`, `sidebar-*`, `badges-dialog`, `badges-close`, `badge-{id}`, `profile-badges`, `profile-photo`, `profile-photo-change`, `profile-photo-remove`, `profile-photo-input`, `profile-bio`. `e2e/rooms.mjs` sets a photo and bio for the host and checks they survive a reload; it also blocks `/api/me` and checks the error with Retry (`admin-error`, `admin-retry`) and opens a room id that does not exist (`room-missing`).
 
 ## Limits
 Photos are stored as data URLs on the user (64 KB cap on the server); no Notifications, Billing or Plans (features don't exist). Badges are awarded by the backend only.
