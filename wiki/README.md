@@ -6,3 +6,4 @@
 - [Feature: accounts and private rooms](features/rooms.md)
 - [Feature: account sidebar and badges](features/account.md)
 - [Feature: admin console](features/admin.md)
+- [Feature: friends and messages](features/friends.md)

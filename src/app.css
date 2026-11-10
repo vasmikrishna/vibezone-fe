@@ -254,6 +254,91 @@
 .dash-friends dd { margin: 4px 0 0; font-size: 1.5rem; font-weight: 600; color: #1f1f1f; }
 .app-card .dash-friends + .dash-tip { margin-top: 0; }
 
+/* Friends list + chat thread (src/Friends.jsx, src/FriendThread.jsx): one column below 1024px, split view above. */
+.app-content:has(> .friends) { max-width: none; padding: 0; gap: 0; }
+.friends {
+  --top: calc(57px + env(safe-area-inset-top));
+  display: flex; min-height: 0;
+  height: calc(100vh - var(--top) - var(--tabs) - env(safe-area-inset-bottom));
+  height: calc(100dvh - var(--top) - var(--tabs) - env(safe-area-inset-bottom));
+}
+.friends-col, .friends-pane { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.friends-col { overflow-y: auto; }
+@media (max-width: 1023.98px) {
+  .friends.open .friends-col, .friends:not(.open) .friends-pane { display: none; }
+}
+.friends-col .friend-tabs { flex: none; background: #fff; }
+.friend-tabs .MuiTab-root { min-width: 0; padding-inline: 8px; white-space: nowrap; }
+.friends-panel { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px 16px; }
+.friend-search { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; color: #6b6b85; background: #fff; border: 1px solid var(--line); border-radius: 999px; }
+.friend-search:focus-within { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
+.friend-search input { flex: 1; min-width: 0; min-height: 42px; padding: 0; font: inherit; font-size: .875rem; color: #1f1f1f; background: transparent; border: 0; outline: 0; }
+.friend-none { margin: 0; font-size: .875rem; color: #6b6b85; }
+.friend-row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 12px 14px; color: #1f1f1f; text-decoration: none; background: #fff; border: 1px solid var(--line); border-radius: 16px; }
+.friend-row:hover { text-decoration: none; background: #faf7ff; }
+.friend-row[aria-current] { background: rgba(143, 71, 255, .1); border-color: rgba(143, 71, 255, .25); }
+.friend-row .friend-text strong, .thread-head .friend-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend-text .friend-line.online { color: #1f9d55; font-weight: 500; }
+.friend-text .friend-line.accent { color: #6a2fd0; font-weight: 500; }
+.friend-avatar { position: relative; flex: none; display: inline-flex; }
+.friend-avatar .app-avatar { width: 48px; height: 48px; font-size: 1.0625rem; }
+.friend-dot { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; box-sizing: border-box; background: #fff; border: 3px solid #b9b9cc; border-radius: 50%; box-shadow: 0 0 0 2px #fff; }
+.friend-dot.on { background: #1f9d55; border: 0; }
+.friend-meta { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: .6875rem; color: #6b6b85; }
+.friend-unread { min-width: 22px; height: 22px; padding: 0 7px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 600; color: #fff; background: var(--accent); border-radius: 999px; }
+.app-tab { position: relative; }
+.app-tab-count { position: absolute; top: 6px; left: calc(50% + 8px); min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; font-size: .625rem; font-weight: 600; line-height: 18px; text-align: center; color: #fff; background: var(--accent); border: 2px solid #fff; border-radius: 999px; }
+
+.thread { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.thread-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 4px; background: #fff; border-bottom: 1px solid var(--line); }
+.thread-head .MuiIconButton-root { width: 44px; height: 44px; color: #1f1f1f; }
+.thread-head .friend-avatar .app-avatar { width: 40px; height: 40px; font-size: .9375rem; }
+.thread-head .friend-text { flex: 1 1 0; margin-left: 4px; }
+.thread-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding: 14px 14px 10px; }
+.thread-earlier.MuiButton-root { align-self: center; min-height: 44px; margin-bottom: 8px; border-radius: 999px; }
+.thread-hint { margin: auto 0 0; text-align: center; font-size: .875rem; color: #6b6b85; }
+.thread-log { list-style: none; margin: auto 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.thread-day { align-self: center; margin: 6px 0 4px; padding: 3px 10px; font-size: .71875rem; font-weight: 500; color: #6b6b85; background: #ebe9f5; border-radius: 999px; }
+.thread-group { align-self: flex-start; max-width: 78%; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.thread-group.mine { align-self: flex-end; align-items: flex-end; }
+.thread-bubble { margin: 0; padding: 10px 14px; font-size: .90625rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; background: #fff; border: 1px solid var(--line); border-radius: 18px 18px 18px 6px; }
+.mine .thread-bubble { color: #fff; background: var(--accent); border-color: var(--accent); border-radius: 18px 18px 6px 18px; }
+.thread-time { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; font-size: .6875rem; color: #6b6b85; }
+.thread-tick.MuiSvgIcon-root { font-size: 14px; color: #9a9ab3; }
+.thread-tick.seen.MuiSvgIcon-root { color: var(--accent); }
+.thread-typing { flex: none; align-self: flex-start; display: inline-flex; gap: 4px; margin-top: 8px; padding: 12px 14px; background: #fff; border: 1px solid var(--line); border-radius: 18px 18px 18px 6px; }
+.thread-typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: typing-dot 1.2s infinite ease-in-out; }
+.thread-typing span:nth-child(2) { animation-delay: .15s; }
+.thread-typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes typing-dot { 0%, 60%, 100% { opacity: .35; } 30% { opacity: 1; } }
+.thread-compose { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #fff; border-top: 1px solid var(--line); }
+.thread-compose input { flex: 1; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 0 16px; font: inherit; font-size: .90625rem; color: #1f1f1f; background: #f6f6fb; border: 1px solid var(--line); border-radius: 999px; }
+.thread-compose input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.thread-send.MuiIconButton-root { flex: none; width: 44px; height: 44px; color: #fff; background: var(--accent); }
+.thread-send.MuiIconButton-root:hover { background: #7a35e8; }
+.thread-send.MuiIconButton-root.Mui-disabled { color: #fff; background: #c9b3f5; }
+.thread-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; color: #6b6b85; }
+.thread-empty p { margin: 0; }
+.thread-empty .MuiButton-root { min-height: 44px; border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) {
+  .thread-typing span { animation: none; }
+  .thread-typing span:nth-child(2) { opacity: .6; }
+  .thread-typing span:nth-child(3) { opacity: .35; }
+}
+@media (min-width: 1024px) {
+  .friends { height: calc(100vh - 65px); height: calc(100dvh - 65px); }
+  .friends-col { flex: none; width: 360px; background: #fff; border-right: 1px solid var(--line); }
+  .friends-col .friend-row { border-color: transparent; }
+  .friends-col .friend-search { background: #f6f6fb; }
+  .thread-back.MuiIconButton-root { display: none; }
+  .thread-head { gap: 12px; padding: 12px 24px; }
+  .thread-head .friend-avatar .app-avatar { width: 44px; height: 44px; }
+  .thread-scroll { padding: 20px 32px 12px; }
+  .thread-group { max-width: 60%; }
+  .thread-compose { padding: 14px 24px 20px; }
+}
+
 /* Preference option cards (Settings page and in-call dialog). */
 .pref-group { border: 0; margin: 0 0 18px; padding: 0; min-width: 0; }
 .pref-legend { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 0; font-weight: 600; font-size: .9375rem; color: #2b2b45; }

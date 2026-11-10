@@ -1,4 +1,4 @@
-// Two signed-in users meet in random chat and become friends, then B sees A on /friends.
+// Two signed-in users meet in random chat and become friends, then message each other on /friends.
 // Usage: TOKEN_A_FILE=… TOKEN_B_FILE=… node e2e/friends.mjs [frontendUrl]
 // Env: CHROMIUM_PATH (existing Chromium), API_URL (default http://localhost:3001), SHOT_DIR (optional screenshots).
 // Both tokens must belong to different adult test users. Any friendship between them is removed before and after.
@@ -87,18 +87,55 @@ try {
   console.log('ok: B accepts and both see Friends ✓');
 
   await b.getByTestId('start-stop').click();
+  await a.goto(new URL(`/friends/${meB.id}`, front).href);
+  const hello = `Hello from A ${Date.now()}`;
+  await a.getByTestId('thread-input').fill(hello);
+  await a.getByTestId('thread-input').press('Enter');
+  await a.getByTestId('thread-log').getByText(hello).waitFor({ timeout: 5000 });
+  await a.getByTestId('thread-delivered').waitFor({ timeout: 5000 });
+  console.log('ok: A opens the thread with B and sends a message');
+
   await b.goto(new URL('/friends', front).href);
   await b.getByTestId('friends-list-friends').waitFor({ timeout: 5000 });
   const names = await b.getByTestId('friend-card').getByTestId('friend-name').allTextContents();
   assert.ok(names.includes(meA.name || 'Vibezone user'), `B's friends include A (${names.join(', ')})`);
-  assert.equal(await b.evaluate(() => document.documentElement.scrollWidth), 390, 'no horizontal scroll at 390px');
-  if (shots) await b.screenshot({ path: join(shots, 'friends-390.png'), fullPage: true });
+  const rowA = b.getByTestId('friend-card').filter({ hasText: hello });
+  assert.equal(await rowA.getByTestId('friend-unread').textContent(), '1', 'unread pill on A\'s row');
+  await b.getByTestId('tab-friends-count').waitFor({ timeout: 5000 });
+  assert.ok(Number(await b.getByTestId('tab-friends-count').textContent()) >= 1, 'Friends tab shows the unread count');
+  assert.equal(await b.evaluate(() => document.documentElement.scrollWidth), 390, 'no horizontal scroll at 390px (list)');
+  if (shots) await b.screenshot({ path: join(shots, 'friends-390.png') });
+  console.log('ok: B sees A\'s preview, the unread pill and the tab count');
+
+  await rowA.click();
+  await b.waitForURL(`**/friends/${meA.id}`);
+  await b.getByTestId('thread-log').getByText(hello).waitFor({ timeout: 5000 });
+  await a.getByTestId('thread-seen').waitFor({ timeout: 5000 });
+  console.log('ok: B opens the thread and A sees Seen');
+
+  await b.getByTestId('thread-input').pressSequentially('Hi A', { delay: 60 });
+  await a.getByTestId('thread-typing').waitFor({ timeout: 5000 });
+  const reply = `Reply from B ${Date.now()}`;
+  await b.getByTestId('thread-input').fill(reply);
+  await b.getByTestId('thread-send').click();
+  await a.getByTestId('thread-log').getByText(reply).waitFor({ timeout: 5000 });
+  assert.equal(await b.getByTestId('thread-input').inputValue(), '', 'composer clears after sending');
+  assert.equal(await b.evaluate(() => document.documentElement.scrollWidth), 390, 'no horizontal scroll at 390px (thread)');
+  if (shots) await b.screenshot({ path: join(shots, 'thread-390.png') });
+  console.log('ok: A sees B typing, then B\'s reply without a reload');
+
+  assert.ok(await a.getByTestId('friends-list-friends').isVisible(), 'split view shows the list');
+  assert.ok(await a.getByTestId('thread').isVisible(), 'split view shows the thread');
+  assert.equal(await a.locator('[data-testid=friend-card][aria-current=page]').count(), 1, 'B\'s row is selected');
+  if (shots) await a.screenshot({ path: join(shots, 'friends-desktop.png') });
+  console.log('ok: at 1280px the list and the thread show side by side');
+
+  await b.getByTestId('thread-back').click();
+  await b.waitForURL('**/friends');
   await b.setViewportSize({ width: 1280, height: 800 });
-  await b.waitForTimeout(500); // sidebar width transition
-  if (shots) await b.screenshot({ path: join(shots, 'friends-desktop.png') });
   await b.getByTestId('friends-tab-sent').click();
   await b.waitForURL('**/friends?tab=sent');
-  console.log('ok: B sees A on /friends; tabs update ?tab=');
+  console.log('ok: back link returns to the list; tabs update ?tab=');
 
   assert.deepEqual(errors, []);
   console.log('ok: no uncaught page errors');
