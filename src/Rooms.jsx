@@ -164,7 +164,16 @@ export default function Rooms() {
             Add your name and date of birth in your <Link to="/profile">profile</Link> to book or create rooms. You must be 18 or older.
           </Alert>
         )}
-        {error && <Alert severity="error" role="alert" data-testid="rooms-error">{error}</Alert>}
+        {error && (
+          <Alert
+            severity="error"
+            role="alert"
+            action={!rooms && <Button color="inherit" size="small" onClick={() => { setError(''); load(); }} data-testid="rooms-retry">Retry</Button>}
+            data-testid="rooms-error"
+          >
+            {error}
+          </Alert>
+        )}
         {rooms && rooms.length === 0 && <p data-testid="rooms-empty">No upcoming rooms yet.</p>}
         <ul className="room-list">
           {rooms?.map((room) => {

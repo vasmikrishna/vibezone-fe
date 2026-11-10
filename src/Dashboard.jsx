@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
+import { ApiError } from './admin/common';
 import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
 import MeetingRoomOutlined from '@mui/icons-material/MeetingRoomOutlined';
 import { AppPage, useApp } from './AppLayout';
@@ -17,17 +18,22 @@ const greeting = () => {
 export default function Dashboard() {
   const { me, openBadges } = useApp();
   const [rooms, setRooms] = useState(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const [friends, setFriends] = useState(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setError(null);
+    setFriends(null);
     api('/rooms')
       .then((list) => setRooms(list.filter((r) => r.booked || r.isHost).sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt))))
-      .catch((err) => setError(err.message));
+      .catch(setError);
     api('/friends')
       .then((d) => setFriends({ count: d.friends.length, incoming: d.incoming.length }))
       .catch(() => setFriends({ error: true }));
   }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const badges = me?.badges || [];
   const earned = badges.filter((b) => b.earned).length;
@@ -84,7 +90,7 @@ export default function Dashboard() {
             <h2 id="dash-rooms-title">Your upcoming rooms</h2>
             <Button component={Link} to="/rooms" size="small" data-testid="dash-all-rooms">All rooms</Button>
           </div>
-          {error && <Alert severity="error" role="alert">{error}</Alert>}
+          <ApiError error={error} onRetry={load} />
           {rooms && rooms.length === 0 && (
             <div className="dash-empty" data-testid="dash-rooms-empty">
               <p>You have not booked or created any rooms yet.</p>
@@ -113,7 +119,9 @@ export default function Dashboard() {
           <Button component={Link} to="/friends" size="small" data-testid="dash-all-friends">All friends</Button>
         </div>
         {friends?.error ? (
-          <p>Could not load your friends.</p>
+          <p role="alert">
+            Could not load your friends. <Button size="small" onClick={load} data-testid="dash-friends-retry">Retry</Button>
+          </p>
         ) : (
           <>
             <dl className="dash-friends">

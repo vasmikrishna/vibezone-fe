@@ -34,6 +34,7 @@ import { api, getToken, clearToken } from './api';
 import { useFriendsSocket } from './useFriendsSocket';
 import { isIOS } from './Layout';
 import { usePageTitle } from './usePageTitle';
+import { ApiError } from './admin/common';
 import BadgesDialog from './BadgesDialog';
 import logo from './assets/vibezone-logo.svg';
 import './app.css';
@@ -185,7 +186,7 @@ function SidebarContents({ collapsed = false, onNavigate, onToggle }) {
 /** Page frame inside the app: sticky top bar with the title and actions, then the content. */
 export function AppPage({ title, actions, wide = false, children }) {
   usePageTitle(`${title} - Vibezone`);
-  const { me, openDrawer, openUserMenu, friendRequests, unread } = useApp();
+  const { me, meError, reloadMe, openDrawer, openUserMenu, friendRequests, unread } = useApp();
   const badge = friendRequests + unread;
   return (
     <>
@@ -210,7 +211,10 @@ export function AppPage({ title, actions, wide = false, children }) {
           <Button component={Link} to="/login" className="app-topbar-login" data-testid="app-topbar-login">Log in</Button>
         )}
       </header>
-      <div className={wide ? 'app-content wide' : 'app-content'}>{children}</div>
+      {/* Without the profile the page would render as signed out, so show the error and a way back instead. */}
+      <div className={wide && !meError ? 'app-content wide' : 'app-content'}>
+        {meError ? <ApiError error={meError} onRetry={reloadMe} /> : children}
+      </div>
     </>
   );
 }
@@ -250,15 +254,29 @@ export default function AppLayout() {
     };
   }, [token, refreshFriends]);
 
-  useEffect(() => {
-    if (!token) return setMe(null);
-    api('/me')
-      .then(setMe)
+  const [meError, setMeError] = useState(null);
+  const loadMe = useCallback(() => {
+    if (!getToken()) return setMe(null);
+    return api('/me')
+      .then((user) => {
+        setMe(user);
+        setMeError(null);
+      })
       .catch((err) => {
         setMe(null);
         if (err.status === 401) navigate('/login', { replace: true });
+        else setMeError(err);
       });
-  }, [token, navigate]);
+  }, [navigate]);
+  useEffect(() => {
+    loadMe();
+  }, [token, loadMe]);
+  // Back online after a failed load: try again without waiting for a tap.
+  useEffect(() => {
+    if (!meError) return undefined;
+    window.addEventListener('online', loadMe);
+    return () => window.removeEventListener('online', loadMe);
+  }, [meError, loadMe]);
 
   const toggle = () => {
     setCollapsed((c) => {
@@ -279,6 +297,8 @@ export default function AppLayout() {
   const ctx = {
     me,
     setMe,
+    meError,
+    reloadMe: loadMe,
     friendRequests: friendCounts.incoming,
     unread: friendCounts.unread,
     refreshFriends,

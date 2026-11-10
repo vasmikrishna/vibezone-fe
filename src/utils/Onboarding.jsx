@@ -10,6 +10,8 @@ const steps = [
   { target: ".video-button", content: "Turn your camera on or off here." },
 ];
 
+const BUTTON = { minHeight: 44, padding: "0 18px", borderRadius: 999, fontFamily: "inherit", fontSize: 15 };
+
 export default function Onboarding() {
   const [run, setRun] = useState(() => !localStorage.getItem("hasSeenOnboarding"));
 
@@ -20,7 +22,9 @@ export default function Onboarding() {
       continuous
       disableOverlayClose
       disableScrollParentFix
-      styles={{ options: { zIndex: 10000 } }}
+      showSkipButton
+      locale={{ last: "Done" }}
+      styles={{ options: { zIndex: 10000, primaryColor: "#8f47ff" }, buttonNext: BUTTON, buttonBack: BUTTON, buttonSkip: BUTTON }}
       callback={({ status }) => {
         if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
           setRun(false);
