@@ -60,54 +60,53 @@ function CreateRoomDialog({ open, onClose, onCreated }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} aria-labelledby="create-title" fullWidth maxWidth="sm">
-      <form onSubmit={submit} noValidate>
-        <DialogTitle id="create-title">Create a room</DialogTitle>
-        <DialogContent>
-          <div className="create-grid">
-            <TextField label="Room name" required {...field('name')} inputProps={{ maxLength: 60, 'data-testid': 'create-name' }} />
-            <TextField
-              label="Date and time"
-              type="datetime-local"
-              required
-              {...field('startsAt')}
-              InputLabelProps={{ shrink: true }}
-              inputProps={{ 'data-testid': 'create-starts' }}
-            />
-            <TextField
-              label="Room duration (minutes)"
-              type="number"
-              {...field('durationMin')}
-              inputProps={{ min: 15, max: 180, 'data-testid': 'create-duration' }}
-            />
-            <TextField
-              label="Time per person (minutes)"
-              type="number"
-              {...field('interactionMin')}
-              inputProps={{ min: 1, max: 30, 'data-testid': 'create-interaction' }}
-            />
-            <TextField
-              label="Number of tickets"
-              type="number"
-              {...field('tickets')}
-              inputProps={{ min: 1, max: 50, 'data-testid': 'create-tickets' }}
-            />
-            <TextField
-              label="Room description"
-              multiline
-              minRows={2}
-              {...field('description')}
-              className="create-wide"
-              inputProps={{ maxLength: 1000, 'data-testid': 'create-description' }}
-            />
-          </div>
-          {error && <Alert severity="error" role="alert" data-testid="create-error">{error}</Alert>}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} data-testid="create-cancel">Cancel</Button>
-          <Button type="submit" variant="contained" disableElevation disabled={busy} data-testid="create-submit">Create</Button>
-        </DialogActions>
-      </form>
+    // The dialog's paper is the form, so the title and buttons stay put while only the fields scroll.
+    <Dialog open={open} onClose={onClose} aria-labelledby="create-title" fullWidth maxWidth="sm" PaperProps={{ component: 'form', onSubmit: submit, noValidate: true }}>
+      <DialogTitle id="create-title">Create a room</DialogTitle>
+      <DialogContent>
+        <div className="create-grid">
+          <TextField label="Room name" required {...field('name')} inputProps={{ maxLength: 60, 'data-testid': 'create-name' }} />
+          <TextField
+            label="Date and time"
+            type="datetime-local"
+            required
+            {...field('startsAt')}
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ 'data-testid': 'create-starts' }}
+          />
+          <TextField
+            label="Room duration (minutes)"
+            type="number"
+            {...field('durationMin')}
+            inputProps={{ min: 15, max: 180, 'data-testid': 'create-duration' }}
+          />
+          <TextField
+            label="Time per person (minutes)"
+            type="number"
+            {...field('interactionMin')}
+            inputProps={{ min: 1, max: 30, 'data-testid': 'create-interaction' }}
+          />
+          <TextField
+            label="Number of tickets"
+            type="number"
+            {...field('tickets')}
+            inputProps={{ min: 1, max: 50, 'data-testid': 'create-tickets' }}
+          />
+          <TextField
+            label="Room description"
+            multiline
+            minRows={2}
+            {...field('description')}
+            className="create-wide"
+            inputProps={{ maxLength: 1000, 'data-testid': 'create-description' }}
+          />
+        </div>
+        {error && <Alert severity="error" role="alert" data-testid="create-error">{error}</Alert>}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} data-testid="create-cancel">Cancel</Button>
+        <Button type="submit" variant="contained" disableElevation disabled={busy} data-testid="create-submit">Create</Button>
+      </DialogActions>
     </Dialog>
   );
 }

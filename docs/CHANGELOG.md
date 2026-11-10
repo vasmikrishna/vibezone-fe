@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — phone: keyboard, bottom tabs and footer (#77)
+
+- On touch screens the bottom tabs hide while you type in a text field, so they no longer sit on top of the field when the keyboard is up (the Android app, where the keyboard shrinks the page).
+- The Create a room dialog keeps its title and its Cancel and Create buttons in view while only the fields scroll, and dialogs use nearly the whole phone screen.
+- The highlight behind the active bottom tab is no longer cut off at the screen edge on Home and Profile.
+- The site footer sits at the bottom of short pages (Log in, About, Contact) instead of floating mid-page.
+
 ## Unreleased — phone-width audit: error states and tap targets (#75)
 
 - When the server cannot be reached, signed-in pages show "Could not reach the server" with Retry (and retry by themselves when the phone is back online) instead of a blank profile and a "?" avatar.

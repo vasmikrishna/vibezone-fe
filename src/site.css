@@ -1,4 +1,6 @@
-.site { max-width: 1100px; margin: 0 auto; }
+/* A column as tall as the screen (less #root's padding), so the footer sits at the bottom of short pages. */
+.site { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; min-height: calc(100dvh - max(.75rem, env(safe-area-inset-top)) - max(.75rem, env(safe-area-inset-bottom))); }
+.site > main { flex: 1; }
 .site h1, .site h2, .site h3 { font-weight: 500; margin: 0 0 .5rem; }
 .site h2 { font-size: 1.5rem; text-align: center; }
 .site-header { display: flex; align-items: center; gap: 1rem; padding: .5rem 0; }
@@ -32,7 +34,7 @@
 .card h3 { font-size: 1.05rem; color: #6a2fd0; }
 .faq { border: 1px solid #ece4fb; border-radius: 8px; padding: .5rem 1rem; margin-bottom: .5rem; }
 .faq summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 500; }
-.site-footer { background: #1f1f1f; color: #ddd; border-radius: 16px 16px 0 0; padding: 1.5rem 1rem; text-align: center; margin-top: 2rem; }
+.site-footer { background: #1f1f1f; color: #ddd; border-radius: 16px; padding: 1.5rem 1rem; text-align: center; margin-top: 2rem; }
 .site-footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; }
 .site-footer a { color: #fff; }
 .site-footer p { margin: .5rem 0 0; font-size: .85rem; }

@@ -63,3 +63,8 @@ h1 {
 }
 /* "Retry" and "Add now" stay on one line beside a wrapping message. */
 .MuiAlert-action .MuiButton-root { white-space: nowrap; }
+/* Phones: dialogs use nearly the whole screen, so their fields stay in view above the keyboard. */
+@media (max-width: 599px) {
+  .MuiDialog-paper.MuiPaper-root { margin: 12px; max-height: calc(100% - 24px); }
+  .MuiDialog-paperFullWidth.MuiPaper-root { width: calc(100% - 24px); }
+}

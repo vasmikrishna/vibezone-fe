@@ -61,7 +61,7 @@ try {
   console.log('ok: backend started');
 
   async function openUser() {
-    const context = await browser.newContext({ permissions: ['camera', 'microphone'], viewport: { width: 375, height: 812 } });
+    const context = await browser.newContext({ permissions: ['camera', 'microphone'], viewport: { width: 375, height: 812 }, hasTouch: true });
     const page = await context.newPage();
     page.on('pageerror', (e) => errors.push(e.message));
     return page;
@@ -117,6 +117,10 @@ try {
   assert.equal(await host.getByTestId('profile-bio').inputValue(), BIO, 'bio survives a reload');
   assert.ok((await host.getByTestId('profile-photo').getAttribute('src')).startsWith('data:image/jpeg'), 'photo survives a reload');
   console.log('ok: profile photo and bio survive a reload');
+  await host.getByTestId('profile-name').focus();
+  assert.equal(await host.locator('.app-tabs').isVisible(), false, 'the bottom tabs get out of the way while typing');
+  await host.getByTestId('profile-name').blur();
+  assert.equal(await host.locator('.app-tabs').isVisible(), true, 'and come back afterwards');
   if (shots) await host.screenshot({ path: `${shots}/profile.png` });
   const guest = await openUser();
   const guestToken = await login(guest);
@@ -140,6 +144,10 @@ try {
   await host.getByTestId('create-duration').fill('15');
   await host.getByTestId('create-interaction').fill('1');
   await host.getByTestId('create-tickets').fill('5');
+  await host.setViewportSize({ width: 375, height: 340 }); // keyboard up on a small phone
+  const create = await host.getByTestId('create-submit').boundingBox();
+  assert.ok(create.y + create.height <= 340, 'Create stays in view above the keyboard');
+  await host.setViewportSize({ width: 375, height: 812 });
   if (shots) await host.screenshot({ path: `${shots}/create-room.png` });
   await host.getByTestId('create-submit').click();
   await host.getByTestId('room-card').filter({ hasText: 'Evening chat' }).waitFor();
