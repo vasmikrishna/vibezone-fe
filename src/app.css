@@ -99,8 +99,13 @@
 .app-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: .6875rem; font-weight: 500; color: #6b6b85; text-decoration: none; }
 .app-tab:hover { text-decoration: none; color: #1f1f1f; }
 .app-tab.active { color: #6a2fd0; }
-.app-tab.active .MuiSvgIcon-root { background: #f0e8ff; border-radius: 999px; padding: 2px 14px; width: 52px; box-sizing: content-box; margin-inline: -14px; }
+.app-tab.active .MuiSvgIcon-root { background: #f0e8ff; border-radius: 999px; padding: 2px 16px; box-sizing: content-box; } /* 56px pill: fits a 64px tab on a 320px screen */
 .app-tab:focus-visible { outline-offset: -4px; border-radius: 12px; }
+/* Keyboard up: where it shrinks the page (the Android app), the tabs would ride on top of it and cover the field being typed in.
+   ponytail: keyed on focus, so the tabs stay hidden after Back closes the keyboard until the field loses focus; use visualViewport if that bites. */
+@media (pointer: coarse) {
+  body:has(:is(input:not([type=checkbox], [type=radio], [type=file], [type=range]), textarea):focus) .app-tabs { display: none; }
+}
 
 @media (min-width: 1024px) {
   .app-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 30; display: block; width: var(--side); background: var(--side-bg); transition: width .2s; }
