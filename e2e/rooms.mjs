@@ -76,23 +76,22 @@ try {
 
   // Codes are requested one user at a time, so the next code line belongs to this login.
   async function login(page) {
-    const number = `98${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`;
-    await page.goto(`${base}/login`);
-    assert.equal(await page.getByTestId('login-country').inputValue(), '+91');
-    await noHorizontalScroll(page, 'login');
-    await page.getByTestId('login-phone').fill(number);
-    assert.equal(await page.getByTestId('login-send').isDisabled(), true, 'terms must be accepted first');
-    await page.getByTestId('login-terms').locator('input').check();
+    const phone = `+9198${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`;
     const from = output.length;
-    await page.getByTestId('login-send').click();
+    const sent = await fetch(`${api}/auth/otp`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone }) });
+    assert.equal(sent.status, 200, 'dev OTP request');
     const { match } = await waitOutput(/\[otp\] dev code (\d{6})/, from);
-    assert.match(await page.getByTestId('login-resend').textContent(), /Resend code in \d+s/);
-    assert.equal(await page.getByTestId('login-resend').isDisabled(), true);
-    await page.getByTestId('login-code').fill(match[1]);
-    await page.getByTestId('login-verify').click();
-    await page.waitForURL('**/profile');
+    const res = await fetch(`${api}/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone, code: match[1] }) });
+    assert.equal(res.status, 200, 'dev OTP verify');
+    const { token } = await res.json();
+    await page.goto(`${base}/login`);
+    await page.getByTestId('login-unavailable').waitFor(); // no VITE_GOOGLE_CLIENT_ID in dev: Google-only page shows the notice
+    assert.equal(await page.getByTestId('login-phone').count(), 0, 'phone form is gone');
+    await noHorizontalScroll(page, 'login');
+    await page.evaluate((t) => localStorage.setItem('vibezoneToken', t), token);
+    await page.goto(`${base}/profile`);
     await page.getByTestId('profile-name').waitFor();
-    return page.evaluate(() => localStorage.getItem('vibezoneToken'));
+    return token;
   }
   async function setProfile(page, name, dob) {
     await page.getByTestId('profile-name').fill(name);
@@ -110,7 +109,7 @@ try {
   const guestToken = await login(guest);
   await setProfile(guest, 'Gopi', '1995-01-20');
   await guest.getByTestId('profile-saved').waitFor();
-  console.log('ok: two users log in with +91 phone and OTP, and set adult profiles');
+  console.log('ok: two users sign in through the dev OTP API and set adult profiles');
 
   await host.goto(`${base}/chat`);
   await host.getByTestId('start-stop').waitFor();
