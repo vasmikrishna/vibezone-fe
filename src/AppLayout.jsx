@@ -31,6 +31,7 @@ import PersonOutline from '@mui/icons-material/PersonOutline';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import PeopleAltOutlined from '@mui/icons-material/PeopleAltOutlined';
 import { api, getToken, clearToken } from './api';
+import { useFriendsSocket } from './useFriendsSocket';
 import { isIOS } from './Layout';
 import { usePageTitle } from './usePageTitle';
 import BadgesDialog from './BadgesDialog';
@@ -50,6 +51,10 @@ const readCollapsed = () => {
 };
 
 const initial = (name) => (name || '?').charAt(0).toUpperCase();
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+/** "3 unread messages, 1 friend request" for the Friends badges; '' when there is nothing. */
+const friendsText = (unread, requests) =>
+  [unread > 0 && plural(unread, 'unread message'), requests > 0 && plural(requests, 'friend request')].filter(Boolean).join(', ');
 
 /** Signed-out users go to /login and come back here afterwards. */
 export function RequireAuth({ admin = false, children }) {
@@ -66,16 +71,16 @@ export function RequireAuth({ admin = false, children }) {
 // Tooltips only on the icon rail: an empty MUI Tooltip would blank the item's accessible name.
 const withTip = (collapsed, title, el) => (collapsed ? <Tooltip title={title} placement="right">{el}</Tooltip> : el);
 
-function NavItem({ to, label, Icon, id, collapsed, onClick, end, count = 0, countLabel }) {
+function NavItem({ to, label, Icon, id, collapsed, onClick, end, count = 0, countText }) {
   return withTip(
     collapsed,
-    count > 0 ? `${label}, ${count} ${countLabel}` : label,
+    count > 0 ? `${label}, ${countText}` : label,
     <NavLink to={to} end={end} className="app-nav-item" onClick={onClick} data-testid={`app-nav-${id}`}>
       <Icon fontSize="small" aria-hidden="true" />
       <span className="app-nav-label">{label}</span>
       {count > 0 && (
         <>
-          <span className="visually-hidden">, {count} {countLabel}</span>
+          <span className="visually-hidden">, {countText}</span>
           <span className="app-count" aria-hidden="true" data-testid={`app-nav-${id}-count`}>{count}</span>
         </>
       )}
@@ -96,7 +101,7 @@ function BadgesItem({ collapsed, earned, onClick }) {
 }
 
 function SidebarContents({ collapsed = false, onNavigate, onToggle }) {
-  const { me, openBadges, openUserMenu, friendRequests } = useApp();
+  const { me, openBadges, openUserMenu, friendRequests, unread } = useApp();
   const signedIn = Boolean(getToken());
   const earned = me?.badges?.filter((b) => b.earned).length ?? 0;
   const item = (props) => <NavItem key={props.id} collapsed={collapsed} onClick={onNavigate} {...props} />;
@@ -105,7 +110,7 @@ function SidebarContents({ collapsed = false, onNavigate, onToggle }) {
       signedIn && { to: '/dashboard', label: 'Dashboard', Icon: SpaceDashboardOutlined, id: 'dashboard' },
       !isIOS && { to: '/chat', label: 'Video chat', Icon: VideocamOutlined, id: 'chat' },
       { to: '/rooms', label: 'Rooms', Icon: MeetingRoomOutlined, id: 'rooms' },
-      signedIn && { to: '/friends', label: 'Friends', Icon: PeopleAltOutlined, id: 'friends', count: friendRequests, countLabel: 'friend requests' },
+      signedIn && { to: '/friends', label: 'Friends', Icon: PeopleAltOutlined, id: 'friends', count: friendRequests + unread, countText: friendsText(unread, friendRequests) },
       { to: '/settings', label: 'Settings', Icon: SettingsOutlined, id: 'settings' },
     ]],
     signedIn && ['Account', [
@@ -180,17 +185,18 @@ function SidebarContents({ collapsed = false, onNavigate, onToggle }) {
 /** Page frame inside the app: sticky top bar with the title and actions, then the content. */
 export function AppPage({ title, actions, wide = false, children }) {
   usePageTitle(`${title} - Vibezone`);
-  const { me, openDrawer, openUserMenu, friendRequests } = useApp();
+  const { me, openDrawer, openUserMenu, friendRequests, unread } = useApp();
+  const badge = friendRequests + unread;
   return (
     <>
       <header className="app-topbar">
         <IconButton
           className="app-hamburger"
           onClick={openDrawer}
-          aria-label={friendRequests > 0 ? `Open menu, ${friendRequests} friend requests` : 'Open menu'}
+          aria-label={badge > 0 ? `Open menu, ${friendsText(unread, friendRequests)}` : 'Open menu'}
           data-testid="app-menu"
         >
-          <Badge badgeContent={friendRequests} color="error" overlap="circular" data-testid="app-menu-badge">
+          <Badge badgeContent={badge} color="error" overlap="circular" data-testid="app-menu-badge">
             <MenuIcon />
           </Badge>
         </IconButton>
@@ -218,15 +224,18 @@ export default function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [badgesOpen, setBadgesOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null);
-  const [friendRequests, setFriendRequests] = useState(0);
+  const [friendCounts, setFriendCounts] = useState({ incoming: 0, unread: 0 });
+  const { subscribe, sendTyping } = useFriendsSocket(token);
 
-  // Incoming friend requests for the sidebar and menu badges: on every route change and each minute while visible.
+  // Friend requests and unread messages for the badges: on every route change, each minute while visible, and on socket events.
   const refreshFriends = useCallback(() => {
-    if (!getToken()) return setFriendRequests(0);
+    if (!getToken()) return setFriendCounts({ incoming: 0, unread: 0 });
+    const num = (n) => (Number.isFinite(n) ? n : 0);
     api('/friends/count')
-      .then((d) => setFriendRequests(Number.isFinite(d?.incoming) ? d.incoming : 0))
+      .then((d) => setFriendCounts({ incoming: num(d?.incoming), unread: num(d?.unread) }))
       .catch(() => { /* keep the last count; the badge is a hint */ });
   }, []);
+  useEffect(() => subscribe((e) => (e.type === 'message' || e.type === 'read') && refreshFriends()), [subscribe, refreshFriends]);
   useEffect(() => {
     refreshFriends();
   }, [pathname, token, refreshFriends]);
@@ -270,8 +279,11 @@ export default function AppLayout() {
   const ctx = {
     me,
     setMe,
-    friendRequests,
+    friendRequests: friendCounts.incoming,
+    unread: friendCounts.unread,
     refreshFriends,
+    subscribe,
+    sendTyping,
     openDrawer: () => setDrawerOpen(true),
     openBadges: () => setBadgesOpen(true),
     openUserMenu: (e) => setMenuAnchor(e.currentTarget),
@@ -283,11 +295,12 @@ export default function AppLayout() {
     ['/contact', 'Help', HelpOutline, 'help'],
     ['/', 'Back to website', Language, 'website'],
   ];
+  const friendsBadge = friendCounts.incoming + friendCounts.unread;
   const tabs = [
     signedIn ? ['/dashboard', 'Home', HomeOutlined, 'home'] : ['/', 'Home', HomeOutlined, 'home'],
     !isIOS && ['/chat', 'Chat', VideocamOutlined, 'chat'],
     ['/rooms', 'Rooms', MeetingRoomOutlined, 'rooms'],
-    ['/settings', 'Settings', SettingsOutlined, 'settings'],
+    signedIn ? ['/friends', 'Friends', PeopleAltOutlined, 'friends', friendsBadge] : ['/settings', 'Settings', SettingsOutlined, 'settings'],
     signedIn ? ['/profile', 'Profile', PersonOutline, 'profile'] : ['/login', 'Log in', Login, 'login'],
   ].filter(Boolean);
 
@@ -310,10 +323,16 @@ export default function AppLayout() {
           <Outlet />
         </main>
         <nav className="app-tabs" aria-label="Quick links">
-          {tabs.map(([to, label, Icon, id]) => (
+          {tabs.map(([to, label, Icon, id, count = 0]) => (
             <NavLink key={id} to={to} end={to === '/'} className="app-tab" data-testid={`tab-${id}`}>
               <Icon aria-hidden="true" />
               <span>{label}</span>
+              {count > 0 && (
+                <>
+                  <span className="visually-hidden">, {friendsText(friendCounts.unread, friendCounts.incoming)}</span>
+                  <span className="app-tab-count" aria-hidden="true" data-testid={`tab-${id}-count`}>{count > 99 ? '99+' : count}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>

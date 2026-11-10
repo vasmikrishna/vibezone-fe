@@ -59,7 +59,7 @@ export default function App() {
           <Route path="/rooms" element={<RequireAuth><Rooms /></RequireAuth>} />
           <Route path="/rooms/:id" element={<RequireAuth><RoomPage /></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-          <Route path="/friends" element={<RequireAuth><Friends /></RequireAuth>} />
+          <Route path="/friends/:id?" element={<RequireAuth><Friends /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth admin><Outlet /></RequireAuth>}>
             <Route index element={<AdminOverview />} />
             <Route path="reports" element={<AdminReports />} />

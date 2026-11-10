@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — friends messages, presence and unread counts (#73)
+
+- Friends can message each other: tap a friend on `/friends` to open the chat at `/friends/:id`. Messages show day dividers, grouped bubbles, Delivered or Seen ticks, a typing indicator and "Load earlier messages".
+- Each friend row shows an online dot, "Online", "Online · in a call" or "Last seen …", the last message with its time, and an unread count. A search box filters friends by name.
+- From 1024px wide the list and the chat sit side by side.
+- The Friends badge in the sidebar and menu counts unread messages plus friend requests. Signed-in users get a Friends tab in the bottom bar in place of Settings (still in the menu and account menu).
+- Remove friend moved into the chat's More options menu.
+
 ## Unreleased — profile photo and bio (#71)
 
 - Profile page: "Change photo" picks an image, which is centre-cropped and shrunk to a 192px JPEG in the browser; "Remove" clears it. Both apply on Save.
