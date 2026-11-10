@@ -25,11 +25,10 @@ export function Terms() {
       <p>You must be 18 or older to use Vibezone. Do not use it if you are under 18.</p>
       <h2>Accounts</h2>
       <p>
-        Private rooms need an account. You log in with your phone number and a one-time code sent
-        by SMS. Before you book or create a room you must give your date of birth, which must show
-        you are 18 or older. It cannot be changed afterwards. If it shows you are under 18, that
-        phone number cannot use rooms. Keep your phone secure: anyone who can receive your codes can
-        use your account.
+        Private rooms need an account. You log in with your Google account. Before you book or
+        create a room you must give your date of birth, which must show you are 18 or older. It
+        cannot be changed afterwards. If it shows you are under 18, that account cannot use rooms.
+        Keep your Google account secure: anyone who can sign in to it can use your Vibezone account.
       </p>
       <h2>Private rooms</h2>
       <p>
@@ -129,24 +128,22 @@ export function Privacy() {
       <h2>Accounts and private rooms</h2>
       <p>If you create an account for private rooms, we also store:</p>
       <ul>
-        <li>your phone number, used to log you in and never shown to other people</li>
-        <li>a hash of your one-time login code, deleted once used and kept at most 5 minutes</li>
+        <li>the email address and Google account id from your Google sign-in, used to log you in; your email is never shown to other people</li>
         <li>the name you choose, which is shown to hosts and the people you talk with</li>
         <li>your date of birth, used only to confirm you are 18 or older</li>
         <li>rooms you create (name, description, times and ticket numbers) and the tickets you book</li>
         <li>reports and blocks made in rooms, including the last text chat lines of that call</li>
       </ul>
       <p>
-        Your phone number is sent to our SMS provider only to deliver your login code. You stay
-        logged in with a token saved on your device for up to 30 days; signing out removes it.
+        You stay logged in with a token saved on your device for up to 30 days; signing out removes it.
       </p>
       <h2>Deleting your account</h2>
       <p>
         Delete your account from your profile at any time. We delete your account, name, date of
         birth, bookings and the blocks you made, and cancel rooms you host that have not ended. Rooms you hosted in the
         past no longer show your name. Reports about you are kept for moderation. If the date of
-        birth you gave showed you were under 18, we keep only your phone number with that flag, so
-        the number cannot be used for rooms again.
+        birth you gave showed you were under 18, we keep only your Google account id with that flag, so
+        it cannot be used for rooms again.
       </p>
       <h2>Text chat</h2>
       <p>

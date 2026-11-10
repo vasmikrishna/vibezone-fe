@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — Google-only sign-in (#69)
+
+- The login page offers only Continue with Google. The phone number + SMS code form is gone (production never had an SMS provider, so it always failed with 503).
+- FAQ, Terms and Privacy describe Google sign-in; the privacy policy no longer lists phone numbers or login-code hashes for new accounts.
+- Where Google sign-in cannot load (native app builds), the page says sign-in is not available yet.
+
 ## Unreleased — friend request after a call (#66)
 
 - After a call with a signed-in partner, the waiting panel (random chat and rooms) offers "Add <name> as a friend" for 10 minutes; it shows Request sent, Accept, or You are friends as that changes.

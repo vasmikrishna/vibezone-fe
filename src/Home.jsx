@@ -18,7 +18,7 @@ const steps = [
 
 const faqs = [
   ['Is Vibezone free?', 'Yes. You can start a video chat without creating an account or paying.'],
-  ['Do I need an account?', 'Not for random video chat. Sign in with your phone number or Google account to keep a daily streak and to book or create private rooms.'],
+  ['Do I need an account?', 'Not for random video chat. Sign in with your Google account to keep a daily streak and to book or create private rooms.'],
   ['How do streaks work?', 'When you are signed in, every day with a video call of at least a minute adds one day to your streak. Miss a day and it starts again. Your best streak is kept on your profile.'],
   ['Who can use it?', 'Vibezone is for adults only. You must be 18 or older. You confirm this before your first chat.'],
   ['Are calls recorded?', 'Vibezone never records or stores calls. Video and audio go directly between you and the other person. Either of you can ask to record a call, but recording starts only after the other person taps Allow, both of you see a REC indicator the whole time, and either can stop it. The file is saved only on the recording person’s device; we never receive it. Recording without consent, such as screen recording, is against our Terms and can be reported. Text chat is not stored, except for the recent messages attached to a report.'],

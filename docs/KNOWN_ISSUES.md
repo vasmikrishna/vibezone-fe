@@ -10,9 +10,9 @@
 - Rooms: date of birth is self-declared; there is no ID check.
 
 ## Launch blockers
-- SMS login needs `SMS_API_URL` and `SMS_API_KEY` on the backend; without them production returns 503 and nobody can log in.
 - No video moderation; reports and bans are the only safeguards.
-- Calls across different networks and real devices are untested until TURN and hosting exist.
+- Production uses Cloudflare TURN (backend `CF_TURN_*`, live 2026-11-10); real devices on carrier NAT still untested.
 - Older commits still contain credentials: rotate them, and purge history if wanted.
-- iOS: Apple guideline 1.2 excludes random or anonymous chat. The iOS app now offers only private rooms with phone accounts, reporting, blocking and account deletion; still to be confirmed in App Review.
+- iOS: Apple guideline 1.2 excludes random or anonymous chat. The iOS app now offers only private rooms with accounts, reporting, blocking and account deletion; still to be confirmed in App Review.
 - Android webview camera and calls untested on an emulator or device.
+- Native apps (Capacitor) have no sign-in: the Google Identity Services web button does not run in the webview and phone login was removed (#69). Needs native Google sign-in before a store release.
