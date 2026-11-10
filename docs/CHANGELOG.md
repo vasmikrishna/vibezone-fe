@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — home page photos (#78)
+
+- The hero's two placeholder cards are now photos of people on a video call.
+- New "Private rooms with hosts" section with a photo and a Browse rooms button; the streak section has a photo with the 🔥 chip on it.
+- The photos are AI-generated with Stitch (not real users), stored as WebP in `src/assets/home-*.webp` (13–29 KB each); the two below the hero load lazily.
+
 ## Unreleased — phone: keyboard, bottom tabs and footer (#77)
 
 - On touch screens the bottom tabs hide while you type in a text field, so they no longer sit on top of the field when the keyboard is up (the Android app, where the keyboard shrinks the page).

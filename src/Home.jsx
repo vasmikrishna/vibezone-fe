@@ -2,6 +2,10 @@ import { Link } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import { SiteLayout } from './Layout';
 import { getToken } from './api';
+import maya from './assets/home-maya.webp';
+import arjun from './assets/home-arjun.webp';
+import host from './assets/home-host.webp';
+import streak from './assets/home-streak.webp';
 
 const features = [
   ['🎥', 'Random video chat', 'Press Start to meet another adult who is online. Add interest tags to match with people who like the same things.'],
@@ -29,14 +33,8 @@ const faqs = [
 function HeroVisual() {
   return (
     <div className="hero-visual" aria-hidden="true">
-      <div className="vcard vcard-back">
-        <span className="vcard-avatar" />
-        <span className="vcard-bar" />
-      </div>
-      <div className="vcard vcard-front">
-        <span className="vcard-avatar" />
-        <span className="vcard-bar" />
-      </div>
+      <img className="vcard vcard-back" src={arjun} alt="" width="640" height="478" />
+      <img className="vcard vcard-front" src={maya} alt="" width="640" height="478" />
       <span className="connected-pill"><span className="live-dot" />Connected</span>
     </div>
   );
@@ -89,7 +87,18 @@ export default function Home() {
         </ol>
       </section>
 
-      <section className="home-section streak-teaser" aria-labelledby="streak-title">
+      <section className="home-section teaser" aria-labelledby="rooms-title">
+        <img className="teaser-photo" src={host} alt="A host waving at her laptop during a room call" width="800" height="447" loading="lazy" />
+        <div>
+          <h2 id="rooms-title">Private rooms with hosts</h2>
+          <p>Book a seat in a small room and take your turn for a one-to-one video call with the host, or sign in and host your own.</p>
+          <Button component={Link} to="/rooms" variant="contained" size="large" disableElevation className="cta" data-testid="rooms-teaser-cta">
+            Browse rooms
+          </Button>
+        </div>
+      </section>
+
+      <section className="home-section teaser streak-teaser" aria-labelledby="streak-title">
         <div>
           <h2 id="streak-title">Keep your streak alive</h2>
           <p>Have a video call of at least a minute every day and watch your streak grow. Your best run is saved on your profile.</p>
@@ -105,7 +114,10 @@ export default function Home() {
             {signedIn ? 'Start today’s call' : 'Sign in to start a streak'}
           </Button>
         </div>
-        <span className="flame-chip" aria-hidden="true">🔥 7</span>
+        <div className="teaser-visual">
+          <img className="teaser-photo" src={streak} alt="A man smiling at a video call on his phone" width="800" height="598" loading="lazy" />
+          <span className="flame-chip" aria-hidden="true">🔥 7</span>
+        </div>
       </section>
 
       <section className="home-section home-faq" aria-labelledby="faq-title">
