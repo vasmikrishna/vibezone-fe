@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
@@ -14,11 +14,38 @@ import { api, clearToken } from './api';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+/** Decodes an image file; createImageBitmap where supported, else an <img> from an object URL. */
+const decodeImage = (file) =>
+  window.createImageBitmap
+    ? createImageBitmap(file)
+    : new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode failed')); };
+        img.src = url;
+      });
+
+/** Centre-crops (cover) the image onto a 192x192 canvas and returns a JPEG data URL. */
+async function toAvatar(file) {
+  const img = await decodeImage(file);
+  const side = Math.min(img.width, img.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 192;
+  canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 192, 192);
+  return canvas.toDataURL('image/jpeg', 0.82);
+}
+
 export default function Profile() {
   const navigate = useNavigate();
   const { me: user, setMe: setUser, openBadges } = useApp();
   const [editedName, setName] = useState(null);
   const name = editedName ?? user?.name ?? '';
+  const [editedBio, setBio] = useState(null);
+  const bio = editedBio ?? user?.bio ?? '';
+  const [photo, setPhoto] = useState(undefined); // undefined = unchanged, null = remove, string = new
+  const shownPhoto = photo === undefined ? user?.photo : photo;
+  const fileInput = useRef(null);
   const [dob, setDob] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -31,10 +58,11 @@ export default function Profile() {
     setError('');
     setSaved(false);
     try {
-      const body = { name: name.trim() };
+      const body = { name: name.trim(), bio: bio.trim(), ...(photo !== undefined && { photo }) };
       if (!user.adult && dob) body.dob = dob;
       const me = await api('/me', { method: 'PATCH', body });
       setUser(me);
+      setPhoto(undefined);
       setSaved(true);
     } catch (err) {
       if (err.status === 401) return navigate('/login', { replace: true });
@@ -47,6 +75,18 @@ export default function Profile() {
       );
     } finally {
       setBusy(false);
+    }
+  };
+
+  const pickPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // so picking the same file again fires onChange
+    if (!file) return;
+    try {
+      setPhoto(await toAvatar(file));
+      setError('');
+    } catch {
+      setError('Could not read that image.');
     }
   };
 
@@ -74,6 +114,16 @@ export default function Profile() {
       <section className="form-page profile-page">
         {user && (
           <form className="form" onSubmit={save} noValidate>
+            <div className="profile-photo-row">
+              <span className="profile-photo app-avatar">
+                {shownPhoto
+                  ? <img className="app-avatar-img" src={shownPhoto} alt="Your profile photo" data-testid="profile-photo" />
+                  : (name || '?').charAt(0).toUpperCase()}
+              </span>
+              <Button variant="outlined" onClick={() => fileInput.current?.click()} data-testid="profile-photo-change">Change photo</Button>
+              {shownPhoto && <Button color="error" onClick={() => setPhoto(null)} data-testid="profile-photo-remove">Remove</Button>}
+              <input ref={fileInput} type="file" accept="image/*" className="visually-hidden" tabIndex={-1} aria-hidden="true" onChange={pickPhoto} data-testid="profile-photo-input" />
+            </div>
             {user.phone ? (
               <p data-testid="profile-phone">Phone: {user.phone}</p>
             ) : (
@@ -102,6 +152,15 @@ export default function Profile() {
               onChange={(e) => setName(e.target.value)}
               required
               inputProps={{ maxLength: 30, 'data-testid': 'profile-name' }}
+            />
+            <TextField
+              label="Bio"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              multiline
+              minRows={2}
+              helperText={`${bio.length}/160`}
+              inputProps={{ maxLength: 160, 'data-testid': 'profile-bio' }}
             />
             {user.adult ? (
               <p data-testid="profile-adult">Date of birth confirmed: you can book and create rooms.</p>

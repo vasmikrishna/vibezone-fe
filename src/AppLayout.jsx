@@ -161,7 +161,7 @@ function SidebarContents({ collapsed = false, onNavigate, onToggle }) {
             aria-label={`Account menu for ${me?.name || 'you'}`}
             data-testid="app-user-card"
           >
-            <span className="app-avatar" aria-hidden="true">{initial(me?.name)}</span>
+            <span className="app-avatar" aria-hidden="true">{me?.photo ? <img className="app-avatar-img" src={me.photo} alt="" /> : initial(me?.name)}</span>
             <span className="app-user-text">
               <strong data-testid="sidebar-name">{me?.name || '…'}</strong>
               <span data-testid="sidebar-streak">🔥 {me?.streak?.count ?? 0}-day streak</span>
@@ -198,7 +198,7 @@ export function AppPage({ title, actions, wide = false, children }) {
         <div className="app-actions">{actions}</div>
         {getToken() ? (
           <button type="button" className="app-avatar app-topbar-avatar" onClick={openUserMenu} aria-haspopup="menu" aria-label="Account menu" data-testid="app-avatar">
-            {initial(me?.name)}
+            {me?.photo ? <img className="app-avatar-img" src={me.photo} alt="" /> : initial(me?.name)}
           </button>
         ) : (
           <Button component={Link} to="/login" className="app-topbar-login" data-testid="app-topbar-login">Log in</Button>
