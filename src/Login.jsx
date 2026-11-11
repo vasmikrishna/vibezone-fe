@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
+import Avatar from '@mui/material/Avatar';
 import { Capacitor } from '@capacitor/core';
 import { SiteLayout } from './Layout';
 import { api, getToken, setToken, safeNext } from './api';
+import { clearRef, getRef } from './invite';
 
 const GOOGLE_CLIENT_ID = Capacitor.isNativePlatform() ? '' : import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -54,6 +56,17 @@ export default function Login() {
   const next = safeNext(useSearchParams()[0].get('next'));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [inviter, setInviter] = useState(null);
+
+  useEffect(() => {
+    const ref = getRef();
+    if (!ref || getToken()) return;
+    let live = true;
+    api(`/invite/${ref}`)
+      .then((who) => live && setInviter(who))
+      .catch((err) => [400, 404].includes(err.status) && clearRef()); // other failures keep the ref for the next try
+    return () => { live = false; };
+  }, []);
 
   if (getToken()) return <Navigate to={next} replace />;
 
@@ -66,7 +79,9 @@ export default function Login() {
     setBusy(true);
     setError('');
     try {
-      const { token, user } = await api('/auth/google', { method: 'POST', body: { credential } });
+      const ref = getRef();
+      const { token, user } = await api('/auth/google', { method: 'POST', body: { credential, ...(ref && { ref }) } });
+      clearRef();
       finish(token, user);
     } catch (err) {
       setError(err.status === 503 ? 'Google sign-in is not available right now.' : err.message);
@@ -78,6 +93,11 @@ export default function Login() {
     <SiteLayout title="Log in - Vibezone">
       <section className="section form-page" aria-busy={busy}>
         <h1>Log in</h1>
+        {inviter && (
+          <Alert severity="info" icon={inviter.photo ? <Avatar src={inviter.photo} alt="" sx={{ width: 24, height: 24 }} /> : undefined} data-testid="login-invite">
+            {inviter.name} invited you to Vibezone. Sign in and you&apos;ll be friends straight away.
+          </Alert>
+        )}
         {GOOGLE_CLIENT_ID ? (
           <>
             <p className="google-terms">

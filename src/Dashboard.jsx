@@ -7,6 +7,7 @@ import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
 import MeetingRoomOutlined from '@mui/icons-material/MeetingRoomOutlined';
 import { AppPage, useApp } from './AppLayout';
 import { BadgeIcon } from './BadgesDialog';
+import InviteCard from './InviteCard';
 import { isIOS } from './Layout';
 import { api, formatDate } from './api';
 
@@ -159,6 +160,8 @@ export default function Dashboard() {
         </button>
         <p className="dash-tip">🔥 Have a video call of at least a minute every day to keep your streak going.</p>
       </section>
+
+      <InviteCard referrals={me?.referrals ?? 0} />
       </div>
     </AppPage>
   );

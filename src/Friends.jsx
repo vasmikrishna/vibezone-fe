@@ -9,13 +9,14 @@ import { ApiError, ConfirmDialog, Loading, When, relTime, useNotify } from './ad
 import { isIOS } from './Layout';
 import { api } from './api';
 import FriendThread, { Avatar, NotFriends } from './FriendThread';
+import { InviteButton } from './InviteCard';
 
 const TABS = [
   ['friends', 'Friends'],
   ['requests', 'Requests'],
   ['sent', 'Sent'],
 ];
-const HOW_TO = "Add friends from a video call — when you're both signed in, tap Add friend.";
+const HOW_TO = "Add friends from a video call — when you're both signed in, tap Add friend. Or invite someone with your link and you're friends as soon as they join.";
 const EMPTY = {
   friends: 'No friends yet.',
   requests: 'No friend requests right now.',
@@ -255,9 +256,12 @@ export default function Friends() {
               <div className="app-card friend-empty" data-testid="friends-empty">
                 <h2>{EMPTY[tab]}</h2>
                 <p>{HOW_TO}</p>
-                <Button component={Link} to={isIOS ? '/rooms' : '/chat'} variant="outlined" data-testid="friends-start">
-                  {isIOS ? 'Browse rooms' : 'Start a video chat'}
-                </Button>
+                <div className="friend-empty-actions">
+                  <Button component={Link} to={isIOS ? '/rooms' : '/chat'} variant="outlined" data-testid="friends-start">
+                    {isIOS ? 'Browse rooms' : 'Start a video chat'}
+                  </Button>
+                  <InviteButton notify={notify} />
+                </div>
               </div>
             ))}
           </div>

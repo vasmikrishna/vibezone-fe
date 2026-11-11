@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — referral program (#81)
+
+- Opening any page with `?ref=<code>` remembers the invite code on the device (`src/invite.js`). The Log in page then says "<name> invited you to Vibezone. Sign in and you'll be friends straight away." and sends the code with the Google sign-in; a new account becomes friends with the inviter. Unknown codes are forgotten.
+- The dashboard has an Invite friends card: your link (`/login?ref=<code>`, always `https://vibezone.varchas.store` in the Android app), Copy link, Share where the device supports it, and how many invited friends joined and had a first call.
+- The empty Friends list has an "Invite a friend" button that shares or copies the same link.
+- Three new badges get icons: Friend Bringer (1 invited friend who finished a first 1-minute call), Connector (5) and Ambassador (25).
+- The Privacy Policy says that joining through an invite link stores who invited you.
+- `e2e/rooms.mjs` checks the invite banner, that a new user who signs up with the code appears in the inviter's friends list, and the link on the dashboard.
+
 ## Unreleased — home page photos (#78)
 
 - The hero's two placeholder cards are now photos of people on a video call.

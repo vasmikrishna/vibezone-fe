@@ -139,6 +139,9 @@ export function Privacy() {
         <li>reports and blocks made in rooms, including the last text chat lines of that call</li>
       </ul>
       <p>
+        If you join through a friend&apos;s invite link, we store who invited you, and the person who invited you sees you in their friends list.
+      </p>
+      <p>
         You stay logged in with a token saved on your device for up to 30 days; signing out removes it.
       </p>
       <h2>Deleting your account</h2>

@@ -10,6 +10,9 @@ import LocalFireDepartment from '@mui/icons-material/LocalFireDepartment';
 import WhatshotOutlined from '@mui/icons-material/WhatshotOutlined';
 import WorkspacePremium from '@mui/icons-material/WorkspacePremium';
 import EmojiEventsOutlined from '@mui/icons-material/EmojiEventsOutlined';
+import PersonAddAlt1Outlined from '@mui/icons-material/PersonAddAlt1Outlined';
+import Diversity3Outlined from '@mui/icons-material/Diversity3Outlined';
+import Campaign from '@mui/icons-material/Campaign';
 
 const ICONS = {
   'first-call': [WavingHandOutlined, '#f5a524'],
@@ -18,6 +21,9 @@ const ICONS = {
   'hot-streak': [LocalFireDepartment, '#ff7a1a'],
   'week-warrior': [WhatshotOutlined, '#e5484d'],
   royalty: [WorkspacePremium, '#f2c94c'],
+  'invite-1': [PersonAddAlt1Outlined, '#8f47ff'],
+  'invite-5': [Diversity3Outlined, '#e255a1'],
+  'invite-25': [Campaign, '#3fb950'],
 };
 
 /** Badge icon in its colour; unknown ids get a grey trophy. Decorative unless given a title. */
