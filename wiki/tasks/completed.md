@@ -1,4 +1,5 @@
 # Completed
+- 2026-11-11: referral program: invite link on the dashboard and empty friends list, invite banner on Log in, invite badges (#81). See docs/CHANGELOG.md and wiki/features/friends.md.
 - 2026-11-11: home page photos in the hero, a rooms section and the streak section (#78). See docs/CHANGELOG.md.
 - 2026-11-11: phone: bottom tabs hide while typing, create-room buttons stay in view, active tab highlight and site footer fixed (#77). See docs/CHANGELOG.md.
 - 2026-11-11: phone-width audit: error states with Retry, missing-room message, tour styling, 44px tap targets, 16px fields (#75). See docs/CHANGELOG.md.

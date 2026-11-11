@@ -3,7 +3,7 @@
 // The frontend must be served with VITE_SERVER_URL=ws://localhost:<API_PORT>, e.g.
 //   VITE_SERVER_URL=ws://localhost:3101 npx vite --port 5273
 // Env: API_PORT (3101), MONGO_URI (mongodb://localhost:27017/vibezone-e2e), BACKEND_DIR (../vibezone-be),
-//      CHROMIUM_PATH, SCREENSHOT_DIR (optional, saves 5 screenshots). Takes about 4 minutes: the room starts 2 minutes out.
+//      CHROMIUM_PATH, SCREENSHOT_DIR (optional, saves 7 screenshots). Takes about 4 minutes: the room starts 2 minutes out.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -77,13 +77,13 @@ try {
     }, null, { timeout: 15000 });
 
   // Codes are requested one user at a time, so the next code line belongs to this login.
-  async function login(page) {
+  async function login(page, ref) {
     const phone = `+9198${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`;
     const from = output.length;
     const sent = await fetch(`${api}/auth/otp`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone }) });
     assert.equal(sent.status, 200, 'dev OTP request');
     const { match } = await waitOutput(/\[otp\] dev code (\d{6})/, from);
-    const res = await fetch(`${api}/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone, code: match[1] }) });
+    const res = await fetch(`${api}/auth/verify`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone, code: match[1], ref }) });
     assert.equal(res.status, 200, 'dev OTP verify');
     const { token } = await res.json();
     await page.goto(`${base}/login`);
@@ -107,7 +107,7 @@ try {
   }
 
   const host = await openUser();
-  await login(host);
+  const hostToken = await login(host);
   await noHorizontalScroll(host, 'profile');
   await setProfile(host, 'Hana', '1990-05-15', true);
   await host.getByTestId('profile-saved').waitFor();
@@ -257,6 +257,23 @@ try {
   await kid.getByTestId('admin-retry').click();
   await kid.getByTestId('profile-name').waitFor();
   console.log('ok: a missing room and an unreachable server each show a message with a way back');
+
+  const { code } = await (await fetch(`${api}/me/invite`, { headers: { authorization: `Bearer ${hostToken}` } })).json();
+  const invitee = await openUser();
+  await invitee.goto(`${base}/login?ref=${code}`);
+  await invitee.getByTestId('login-invite').filter({ hasText: 'Hana invited you to Vibezone' }).waitFor();
+  await noHorizontalScroll(invitee, 'login invite');
+  if (shots) await invitee.screenshot({ path: `${shots}/login-invite.png` });
+  await login(invitee, code);
+  await setProfile(invitee, 'Ivy', '1998-03-03');
+  await invitee.getByTestId('profile-saved').waitFor();
+  await host.goto(`${base}/friends`);
+  await host.getByTestId('friend-name').filter({ hasText: 'Ivy' }).waitFor();
+  await host.goto(`${base}/dashboard`);
+  await host.waitForFunction((c) => document.querySelector('[data-testid=invite-link]')?.value.endsWith(`?ref=${c}`), code);
+  await noHorizontalScroll(host, 'dashboard');
+  if (shots) await host.getByRole('region', { name: 'Invite friends' }).screenshot({ path: `${shots}/dashboard-invite.png` });
+  console.log('ok: an invite link shows who invited you, and the new user joins as their friend');
 
   await kid.goto(`${base}/profile`);
   await kid.getByTestId('profile-delete').click();
