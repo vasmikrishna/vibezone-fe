@@ -12,7 +12,6 @@
 ## Launch blockers
 - No video moderation; reports and bans are the only safeguards.
 - Production uses Cloudflare TURN (backend `CF_TURN_*`, live 2026-11-10); real devices on carrier NAT still untested.
-- Production has no TURN server (`TURN_*` unset on Fly): calls between two people behind carrier NAT (most mobile data) or on UDP-blocked networks cannot connect. Simulated locally with coturn; real devices still untested.
 - Older commits still contain credentials: rotate them, and purge history if wanted.
 - iOS: Apple guideline 1.2 excludes random or anonymous chat. The iOS app now offers only private rooms with accounts, reporting, blocking and account deletion; still to be confirmed in App Review.
 - Android webview camera and calls untested on an emulator or device.
